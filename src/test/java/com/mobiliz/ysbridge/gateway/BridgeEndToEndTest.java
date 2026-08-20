@@ -524,6 +524,33 @@ class BridgeEndToEndTest {
         }
 
         @Test
+        void shouldUseTheStatusTheCatalogAssignsRatherThanADefaultOne() {
+            // A command the platform refuses is the caller's request being unprocessable,
+            // not a malformed one — the catalog says 422 and that is what must come out.
+            LEGACY.stubFor(
+                    put(urlPathEqualTo("/yetkiliservis/sendcarcommand/abc"))
+                            .willReturn(
+                                    aResponse()
+                                            .withStatus(201)
+                                            .withHeader("Content-Type", "application/json")
+                                            .withBody(
+                                                    failure(
+                                                            "notsupported.commands.iotplatform.error"))));
+
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/api/v1/work-order-lines/abc/car-command",
+                            """
+                            {"command": {"name": "siren", "code": "1"},
+                             "state": {"name": "on", "code": "1"}}""",
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getBody().get("code").asText()).isEqualTo("COMMAND_NOT_SUPPORTED");
+        }
+
+        @Test
         void shouldRelayAScalarResultUnchanged() {
             stubGet(
                     "/yetkiliservis/DVRSonDurum/abc",
@@ -579,6 +606,23 @@ class BridgeEndToEndTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
             assertThat(response.getBody().get("code").asText()).isEqualTo("PAYLOAD_TOO_LARGE");
+        }
+
+        @Test
+        void shouldRefuseToAnswerInAFormatItCannotProduce() {
+            HttpHeaders headers = authenticated();
+            headers.setAccept(java.util.List.of(MediaType.APPLICATION_XML));
+
+            ResponseEntity<String> response =
+                    http.exchange(
+                            "/api/v1/work-order-lines/abc",
+                            HttpMethod.GET,
+                            new HttpEntity<>(null, headers),
+                            String.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_ACCEPTABLE);
+            LEGACY.verify(
+                    0, getRequestedFor(urlPathEqualTo("/yetkiliservis/servistalepsatiri/abc")));
         }
 
         @Test

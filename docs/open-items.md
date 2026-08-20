@@ -8,7 +8,7 @@ Status key: **BLOCKED** (needs information we do not have) · **PLANNED** (sched
 **LIMITATION** (deliberate design boundary, documented) · **DEBT** (was promised, not done)
 · **CLOSED** (kept for the record).
 
-Last reviewed: 2026-08-20, after the contract-evolution, error-handling and paging pass.
+Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees and of every reachable HTTP status.
 
 ---
 
@@ -69,6 +69,8 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 | ~~B14a~~ | Authentication at the gateway | **DONE.** `authentication: TOKEN \| NONE` per resource, default `TOKEN`. Unauthenticated calls are rejected with 401 and `WWW-Authenticate` before the legacy API is troubled. The exposed contract uses `Authorization: Bearer`; the legacy `token` header is an implementation detail of the upstream. |
 | ~~B15~~ | Collection paging | **DONE.** Every collection is an object with `items` + `page`, never a bare array, and always paged. See C12 for what this pagination is and is not. |
 | ~~B16~~ | Inbound guards | **DONE.** 415 for a non-JSON body, 413 beyond a configured bound (read with the bound enforced, not after), 400 for unusable paging parameters — all validated before the upstream call. |
+| ~~B18~~ | Every status the gateway can return is exercised | **DONE.** An audit compared the statuses reachable in code against those asserted in tests and found three untested paths — 504, 500 and 406 — plus one catalogued status, 422. All four now have tests. An untested error path is one nobody knows works. |
+| ~~B19~~ | The config-driven claim made executable | **DONE.** `ConfigDrivenGuaranteesTest` proves both promises rather than asserting them in prose: an endpoint declared only in YAML is routable and translatable with no Java change, and the same legacy payload survives two entirely different sets of exposed names. Either promise breaking now fails a test. |
 | ~~B17~~ | Catch-all error handling | **DONE.** Every failure is a problem document, including unforeseen ones (500, stack trace logged and never returned) and paths outside `/api/v1`. Upstream redirects are diagnosed separately from malformed bodies, because their fix is different. |
 
 ---
@@ -121,6 +123,7 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 | **E10** | **Exact matching only in the error catalog** | Guessing which error a half-matching message means is how a bridge starts lying about what happened upstream |
 | **E11** | **The exposed API uses `Authorization: Bearer`, not the legacy `token` header** | The same move as turning the legacy `search` header into a query parameter: an anti-corruption layer that forwards the upstream's awkwardness has not corrected anything |
 | **E12** | **Opaque lookup values are objects, not scalars** | `brand.id` rather than `brandId`. When the reference-data endpoint resolves them, the label is added as `brand.name` — a new field, not a changed one. A flat string would have had to become an object, breaking every caller |
+| **E14** | **A request the caller got wrong never reaches the legacy API** | Authentication, paging parameters, the `Accept` header, the body's media type and its size are all checked before the upstream call. Two of these were found the wrong way round during an audit — paging and `Accept` were both being validated only after the call had already been made and paid for. |
 | **E13** | **Nothing is said twice in a response** | The legacy envelope carried `success: true` and `type: "SUCCESS"` — one fact, two names. The same discipline is applied to what this service emits: no `detail` that repeats `title`, no `legacyType` that repeats the status, no derivable page flags |
 
 ---

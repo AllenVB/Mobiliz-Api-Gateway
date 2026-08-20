@@ -28,12 +28,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -101,7 +103,8 @@ public class BridgeController {
     }
 
     @RequestMapping("/api/v1/**")
-    public ResponseEntity<JsonNode> handle(HttpServletRequest request) {
+    public ResponseEntity<JsonNode> handle(HttpServletRequest request)
+            throws HttpMediaTypeNotAcceptableException {
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String path = pathOf(request);
 
@@ -119,6 +122,8 @@ public class BridgeController {
         // return a collection — a parameter this API understands but cannot use is still a
         // mistake worth naming.
         PageRequest pageRequest = paginator.parse(request);
+
+        requireJsonIsAcceptable(request);
 
         byte[] rawBody = readBody(request);
         requireJsonWhenBodyPresent(request, rawBody);
@@ -206,6 +211,31 @@ public class BridgeController {
         } catch (IOException e) {
             throw new MalformedRequestBodyException(e);
         }
+    }
+
+    /**
+     * Rejects a caller who cannot accept JSON, before the legacy API is called.
+     *
+     * <p>Left to the framework, this surfaces only while writing the response — after the upstream
+     * call has already been made and paid for. The header says up front that the exchange cannot
+     * succeed, so it is checked up front.
+     */
+    private static void requireJsonIsAcceptable(HttpServletRequest request)
+            throws HttpMediaTypeNotAcceptableException {
+        String accept = request.getHeader(HttpHeaders.ACCEPT);
+        if (accept == null || accept.isBlank()) {
+            return;
+        }
+        try {
+            for (MediaType accepted : MediaType.parseMediaTypes(accept)) {
+                if (accepted.isCompatibleWith(MediaType.APPLICATION_JSON)) {
+                    return;
+                }
+            }
+        } catch (InvalidMediaTypeException e) {
+            throw new HttpMediaTypeNotAcceptableException(List.of(MediaType.APPLICATION_JSON));
+        }
+        throw new HttpMediaTypeNotAcceptableException(List.of(MediaType.APPLICATION_JSON));
     }
 
     private static void requireJsonWhenBodyPresent(HttpServletRequest request, byte[] rawBody) {
