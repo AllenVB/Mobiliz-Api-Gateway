@@ -1,0 +1,11 @@
+# Deliberately broken: `responce` is a typo for `response`.
+# Used to prove that a mistake in a mapping document stops the service from starting
+# instead of silently dropping fields at runtime.
+resources:
+  broken-resource:
+    method: GET
+    exposedPath: /api/v1/broken
+    legacyPath: /yetkiliservis/bozuk
+    responce:
+      fields:
+        durum: status

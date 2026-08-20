@@ -1,0 +1,70 @@
+# Car Command endpoints of the legacy "Yetkili Servis" API.
+#
+# PROVISIONAL — exposed names are proposals until the team supplies the agreed
+# vocabulary. Only the right-hand side of each mapping line changes when they do.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Immobilizer: read and write share one legacy path, split by method.
+  # --------------------------------------------------------------------------
+  # NOTE: the legacy field is `durum`, which elsewhere in this API means "status"
+  # and holds a code. Here it is a plain boolean, so it is exposed as `active`.
+  # This is why the glossary must never override an explicit per-resource mapping.
+  immobilizer-status:
+    method: GET
+    exposedPath: /api/v1/work-order-lines/{detailId}/immobilizer
+    legacyPath: /yetkiliservis/immobilizercheck/{detailId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        durum: active
+
+  immobilizer-update:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/immobilizer
+    legacyPath: /yetkiliservis/immobilizercheck/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        durum: active
+    # Response carries no payload on success, which the bridge turns into 204.
+
+  # --------------------------------------------------------------------------
+  # Vehicle command
+  # --------------------------------------------------------------------------
+  # The captured attempt was rejected by the platform with the dotted error code
+  # `notsupported.commands.iotplatform.error`, so the request shape is confirmed
+  # but the set of accepted commands is not.
+  #
+  # Both `komut`/`komutid` and `durum`/`durumid` arrive as a label plus its code.
+  # The codes are numeric strings; the labels are free text ("siren", "on").
+  send-car-command:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/car-command
+    legacyPath: /yetkiliservis/sendcarcommand/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        # Each of these is a label paired with its code — one concept per object, so a
+        # third attribute can be added later without changing what already exists.
+        komut: command.name
+        komutid: command.code
+        durum: state.name
+        durumid: state.code
+
+  # --------------------------------------------------------------------------
+  # Status command
+  # --------------------------------------------------------------------------
+  # The URL is confirmed, the body is NOT: the capture was sent without one and
+  # answered 411 Length Required.
+  #
+  # Deliberately declared with no `request` block. The route, the token header and
+  # the envelope handling all work; the body is relayed to the legacy API unchanged
+  # until a real sample exists. That means callers must currently send the legacy
+  # field names for this one endpoint — the only place in the bridge where that is
+  # true, and it is tracked in docs/open-items.md.
+  send-status-command:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/status-command
+    legacyPath: /yetkiliservis/sendstatuscommand/{detailId}

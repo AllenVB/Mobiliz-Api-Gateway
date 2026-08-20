@@ -1,0 +1,74 @@
+# Auth endpoints of the legacy "Yetkili Servis" API.
+#
+# Reading the file: the key is always the legacy (Turkish) name, the value is the name
+# this bridge exposes. A dot in the exposed name groups the field into a nested object.
+# A field may instead be written in long form to add `type`, `values`, `nested` or
+# `emptyStringAsNull`.
+#
+# `type` declares the type of the *exposed* field and exists for legacy values that
+# arrive quoted; translating back renders the canonical string form. Declare it only
+# for fields the legacy API sends as strings.
+
+resources:
+
+  auth-login:
+    method: POST
+    exposedPath: /api/v1/auth/login
+    legacyPath: /yetkiliservis/giris
+    # This is how a caller obtains a token, so it cannot require one.
+    authentication: NONE
+
+    request:
+      # Our contract, our field names: anything we do not recognise is a client error.
+      unmapped: FAIL
+      fields:
+        kullaniciAdi: username
+        sifre: password
+        deviceToken: deviceToken
+        osversiyon:
+          # Holds "IOS" / "ANDROID" — a platform, not a version, despite the legacy name.
+          # The table also makes any unexpected value visible in the coverage report.
+          exposed: platform
+          values:
+            IOS: IOS
+            ANDROID: ANDROID
+
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        token: token
+        adSoyad: fullName
+        # A code and its description: one concept, so one object. Exposing them as two
+        # flat fields would make adding anything else about the role a breaking change.
+        rol: role.code
+        rolAciklama: role.description
+        qr: qrEnabled
+
+        androidversion: appVersions.authorizedServiceAndroid
+        iosversion: appVersions.authorizedServiceIos
+        satisandroidversion: appVersions.salesAndroid
+        satisiosversion: appVersions.salesIos
+
+        # YS = Yetkili Servis, Satis = Sales.
+        # KVKK is the data-privacy consent, ETK the electronic-marketing consent.
+        YSKVKK: consents.authorizedServiceDataPrivacy
+        YSETK: consents.authorizedServiceMarketing
+        SatisKVKK: consents.salesDataPrivacy
+        SatisETK: consents.salesMarketing
+
+  auth-password-reset-request:
+    method: POST
+    exposedPath: /api/v1/auth/password-reset-requests
+    legacyPath: /yetkiliservis/sifremiunuttum
+    authentication: NONE
+
+    request:
+      unmapped: FAIL
+      fields:
+        kullaniciAdi: username
+
+    # PROVISIONAL: no successful response has been captured for this endpoint. The one
+    # attempt was intercepted by Cloudflare, which answered 403 with an HTML challenge
+    # page instead of the legacy envelope. Declaring no response mapping means the
+    # envelope is still stripped and whatever `result` holds is passed through as-is.
+    # Replace this with a real mapping once a successful sample exists.

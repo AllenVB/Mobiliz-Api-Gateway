@@ -1,0 +1,43 @@
+# Reference data (dropdown lists) of the legacy "Yetkili Servis" API.
+#
+# PROVISIONAL — exposed names are proposals until the team supplies the agreed
+# vocabulary.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Every dropdown list in the system, in one flat array
+  # --------------------------------------------------------------------------
+  # This is the endpoint that explains the opaque codes seen everywhere else. A
+  # captured entry:
+  #
+  #   { "comboAdi": "par_gsmcompany", "key": "Avea", "value": "100000002",
+  #     "parentvalue": null, "regardingvalue": null }
+  #
+  # and `telOperator: "100000002"` on a work order line is exactly that Avea entry.
+  # So `value` is the code stored on records, `key` is its label, and `comboAdi`
+  # names the list the pair belongs to.
+  #
+  # `parentvalue` / `regardingvalue` look like dependency links between lists — for
+  # example a district list keyed by its city. Both were null in the capture, so the
+  # relationship is unverified.
+  #
+  # NOTE: the response is ~0.92 MB and holds every list at once. It is a strong
+  # candidate for caching in the bridge, and for a filtered exposed endpoint
+  # (`?list=par_gsmcompany`) once query-parameter support lands.
+  #
+  # DUPLICATE IN THE COLLECTION: `get accessories` calls this exact URL and returns
+  # this exact payload. It is the same endpoint under a second name, not a separate
+  # one, so it is mapped once here.
+  dropdown-list:
+    method: GET
+    exposedPath: /api/v1/reference-data
+    legacyPath: /yetkiliservis/combolar
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        comboAdi: listName
+        key: label
+        value: value
+        parentvalue: parentValue
+        regardingvalue: regardingValue

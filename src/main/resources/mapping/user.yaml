@@ -1,0 +1,29 @@
+# User endpoints of the legacy "Yetkili Servis" API.
+#
+# PROVISIONAL — exposed names are proposals until the team supplies the agreed
+# vocabulary.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Consent update  (listed in the collection as "update privacy policy")
+  # --------------------------------------------------------------------------
+  # The two flags are the same consents login reports, minus the audience prefix:
+  # login returns YSKVKK / YSETK / SatisKVKK / SatisETK, this endpoint takes plain
+  # KVKK / ETK and applies them to the signed-in user.
+  #
+  # KVKK is Turkey's data-protection law and ETK its electronic-commerce law, so
+  # they are exposed by what they mean rather than by the statute they come from —
+  # matching the `consents` block of the login response.
+  #
+  # The legacy path is `/kullanici` (user) with no identifier: the subject is
+  # whoever the token belongs to. The exposed path says so explicitly.
+  user-consents-update:
+    method: PUT
+    exposedPath: /api/v1/users/me/consents
+    legacyPath: /yetkiliservis/kullanici
+    request:
+      unmapped: FAIL
+      fields:
+        KVKK: dataPrivacy
+        ETK: marketing

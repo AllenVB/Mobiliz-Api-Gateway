@@ -1,0 +1,72 @@
+# Service endpoints of the legacy "Yetkili Servis" API.
+#
+# PROVISIONAL — exposed names are proposals until the team supplies the agreed
+# vocabulary.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Service detail, read
+  # --------------------------------------------------------------------------
+  # No successful response has been captured: both attempts were made without the
+  # token header and came back "Token Bilgisi Eksik". Declaring no response mapping
+  # means the payload is relayed untranslated until a real sample exists, which is
+  # visible rather than silently wrong.
+  service-detail:
+    method: GET
+    exposedPath: /api/v1/services/{detailId}
+    legacyPath: /yetkiliservis/servisdetay/{detailId}
+
+  # --------------------------------------------------------------------------
+  # Service detail, write
+  # --------------------------------------------------------------------------
+  # ⚠ THIS AND `service-maintenance-update` BELOW SHARE ONE LEGACY ENDPOINT.
+  # Both are PUT /yetkiliservis/servisdetay/{detayId}; the legacy API tells them
+  # apart only by which fields the body carries. That is fragile — a client sending
+  # both sets at once would get undefined behaviour — and is reported to the team.
+  #
+  # The bridge gives them two distinct exposed paths so callers cannot conflate
+  # them, and each declares `unmapped: FAIL` so a body mixing the two sets is
+  # rejected here rather than at the legacy API.
+  service-detail-update:
+    method: PUT
+    exposedPath: /api/v1/services/{detailId}
+    legacyPath: /yetkiliservis/servisdetay/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        # Which parts were taken in for maintenance.
+        bakimdakicihaz: deviceUnderMaintenance
+        bakimdakikablotesisat: wiringUnderMaintenance
+        bakimdakigsm: simUnderMaintenance
+        bakimdakiaksesuar1: accessoryUnderMaintenance1
+        bakimdakiaksesuar2: accessoryUnderMaintenance2
+        bakimdakiaksesuar3: accessoryUnderMaintenance3
+
+        # Diagnosis and resolution, free text in the capture.
+        sorununkaynagi: faultSource
+        sorununkaynagidetay: faultSourceDetail
+        cozumdetay: resolutionDetail
+
+        resimyukle: photoRequired
+        # A numeric code; its list is unknown. See docs/open-items.md.
+        kargodurumu: shipmentStatus.code
+
+  # --------------------------------------------------------------------------
+  # Maintenance shipment details, write
+  # --------------------------------------------------------------------------
+  # Same legacy endpoint as above — see the warning there.
+  service-maintenance-update:
+    method: PUT
+    exposedPath: /api/v1/services/{detailId}/maintenance
+    legacyPath: /yetkiliservis/servisdetay/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        # A numeric string code selecting the carrier; `kargofirmasidiger` carries a
+        # free-text name when the code means "other". Arrived as "" rather than null.
+        kargofirmasi: carrier.code
+        kargofirmasidiger:
+          exposed: carrier.otherName
+          emptyStringAsNull: true
+        kargotakipno: trackingNumber

@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: ys-bridge
+
+server:
+  port: 8080
+
+ys-bridge:
+  legacy:
+    # Deliberately has no default. A bridge with no upstream is useless, so the service
+    # refuses to start rather than accepting traffic it cannot serve.
+    base-url: ${YS_LEGACY_BASE_URL:}
+    connect-timeout: 5s
+    read-timeout: 15s
+  mapping:
+    locations:
+      - classpath*:mapping/*.yaml
+  pagination:
+    # Collections are always paged. The legacy API does not paginate — it answers with whole
+    # collections, one of which is about a megabyte — so the gateway pages on its own side.
+    default-size: 100
+    max-size: 500
+  limits:
+    # Attachments travel as base64 inside JSON, which inflates them by roughly a third.
+    max-request-body: 10MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.mobiliz.ysbridge: INFO

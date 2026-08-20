@@ -1,0 +1,319 @@
+# Work Order endpoints of the legacy "Yetkili Servis" API.
+#
+# ============================================================================
+# PROVISIONAL — the exposed names below are proposals, not agreed vocabulary.
+# The team will supply the intended English names; only the right-hand side of
+# each line changes when they do. The structure, paths and engine behaviour
+# stay as they are.
+# ============================================================================
+#
+# Reading the file: the key is always the legacy (Turkish) name, the value is the name
+# this bridge exposes. A dot in the exposed name groups the field into a nested object.
+# Long form adds `type`, `values`, `nested` or `emptyStringAsNull`.
+#
+# Opaque references — CRM option-set codes and GUIDs — are exposed as objects
+# (`brand.id`, `fuelType.code`) rather than flat values (`brandId`, `fuelTypeCode`).
+# They are opaque only until the reference-data endpoint is used to resolve them, and
+# when that happens the label is added as `brand.name` — a new field, not a changed one.
+# A flat `brandId` string would have had to become an object, breaking every caller.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Work order list
+  # --------------------------------------------------------------------------
+  # The legacy path ends in a bare `0` whose meaning is unknown — most likely a status
+  # filter. It is modelled as a path variable so nothing is hardcoded; once its meaning
+  # is confirmed it should become a named query parameter instead.
+  # No response mapping: the captured request had not finished loading.
+  work-order-list:
+    method: GET
+    exposedPath: /api/v1/work-orders/{listFilter}
+    legacyPath: /yetkiliservis/servistalepleri/{listFilter}
+
+  # --------------------------------------------------------------------------
+  # Lines of one work order  (result is an array)
+  # --------------------------------------------------------------------------
+  work-order-lines:
+    method: GET
+    exposedPath: /api/v1/work-orders/{workOrderId}/lines
+    legacyPath: /yetkiliservis/servistalepsatirlari/{workOrderId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        detayId: detailId
+        srvNumarasi: serviceNumber
+        plaka: plateNumber
+        serino: serialNumber
+        vendorCode: vendorCode
+        gsm: phoneNumber
+        durum: status
+        churn: churn
+        ysozelnot: authorizedServiceNote
+        sahadestekok: fieldSupportAllowed
+        bakimonarimok: maintenanceAllowed
+        # NOTE: a number here, but a string in servistalepsatiri. Normalising the two
+        # would need the engine to know the legacy type as well as the exposed one.
+        hizmetLokasyonu: serviceLocation.code
+        sonServisFotolari:
+          exposed: lastServicePhotos
+          emptyStringAsNull: true
+        montajDokumani:
+          exposed: installationDocument
+          emptyStringAsNull: true
+
+  # --------------------------------------------------------------------------
+  # One work order line, read and write
+  # --------------------------------------------------------------------------
+  work-order-line:
+    method: GET
+    exposedPath: /api/v1/work-order-lines/{detailId}
+    legacyPath: /yetkiliservis/servistalepsatiri/{detailId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        plaka: plateNumber
+        serino: serialNumber
+        gsm: phoneNumber
+        canBusProfile: canBusProfile
+        vendorCode: vendorCode
+        stfFormNo: stfFormNumber
+        telOperator: telecomOperator.code
+        apnYok: apnMissing
+        km: odometerKm
+        testHatti: testLine
+        aracTipi: vehicleType.id
+        yil: year.code
+        marka: brand.id
+        model: model.id
+        motorHacmi: engineVolume.code
+        yakitTuru: fuelType.code
+        hizmetLokasyonu: serviceLocation.code
+        # "şehir içi / şehir dışı" — inside or outside the city. The polarity of the
+        # flag is not obvious from the name; confirm before trusting it.
+        sehirIciDisi: cityScope
+        sehir: city.id
+        ilce: district.id
+        semt: neighbourhood
+        ysozelnot: authorizedServiceNote
+        plakakontrolsuz: plateCheckSkipped
+        yolbedelsiz: travelFeeWaived
+        churn: churn
+        lastikmarka: tyreBrand.code
+        lastikebat: tyreSize.code
+        saseno: chassisNumber
+        otokocmu: otokocCustomer
+
+  # The collection points this at PUT /yetkiliservis/servistalepleri/0, which answers
+  # 405 Method Not Allowed with ASP.NET's own error body. The request payload is
+  # field-for-field the response of servistalepsatiri/{detayId}, so that is almost
+  # certainly the intended target. CONFIRM WITH THE TEAM before relying on this.
+  work-order-line-update:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}
+    legacyPath: /yetkiliservis/servistalepsatiri/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        plaka: plateNumber
+        serino: serialNumber
+        gsm: phoneNumber
+        canBusProfile: canBusProfile
+        vendorCode: vendorCode
+        stfFormNo: stfFormNumber
+        telOperator: telecomOperator.code
+        apnYok: apnMissing
+        km: odometerKm
+        testHatti: testLine
+        aracTipi: vehicleType.id
+        yil: year.code
+        marka: brand.id
+        model: model.id
+        motorHacmi: engineVolume.code
+        yakitTuru: fuelType.code
+        hizmetLokasyonu: serviceLocation.code
+        sehirIciDisi: cityScope
+        sehir: city.id
+        ilce: district.id
+        semt: neighbourhood
+        ysozelnot: authorizedServiceNote
+        plakakontrolsuz: plateCheckSkipped
+        yolbedelsiz: travelFeeWaived
+        churn: churn
+        lastikmarka: tyreBrand.code
+        lastikebat: tyreSize.code
+        saseno: chassisNumber
+        otokocmu: otokocCustomer
+
+  # --------------------------------------------------------------------------
+  # Telematics status of the vehicle on a line
+  # --------------------------------------------------------------------------
+  vehicle-status:
+    method: GET
+    exposedPath: /api/v1/work-order-lines/{detailId}/vehicle-status
+    legacyPath: /yetkiliservis/aracsondurum/{detailId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        plaka: plateNumber
+        serino: serialNumber
+        gsm: phoneNumber
+        emoveGsmNumber: emovePhoneNumber
+        sunucukaydi: serverRegistered
+        sonAdresBilgisi: lastAddress
+        donanimBilgisi: hardwareInfo
+        cihazYazilimVersiyonu: deviceFirmwareVersion
+        mesafeSayaci: distanceCounter
+        # A decimal delivered as a string ("13.24"). Left as a string for now: the
+        # decimal handling boundary is recorded in docs/open-items.md.
+        anaBeslemeVoltaji: mainSupplyVoltage
+        kontakAktivitesi: ignitionActive
+        immobilizer: immobilizer
+        DVR: dvrAvailable
+
+        # Timestamps. ISO-8601 without an offset — the bridge does not invent one.
+        ilkVeriTarihi: timestamps.firstDataAt
+        sonVeriTarihi: timestamps.lastDataAt
+        lastGPSTime: timestamps.lastGpsAt
+        lastBulkGSensorTime: timestamps.lastBulkGSensorAt
+        lastMultiGpsTime: timestamps.lastMultiGpsAt
+        lastAccelerationandGpsTime: timestamps.lastAccelerationAndGpsAt
+
+        # CAN bus block.
+        # WARNING: the legacy payload carries both `canbusYakitSeviyesi` and
+        # `canbusFuelLevel`. They look like the same reading under two names; both were
+        # null in the capture, so the difference is unverified. Confirm before use.
+        canbusok: canBus.ok
+        canbusHiz: canBus.speed
+        canBusKM: canBus.odometer
+        canbusEngineRPM: canBus.engineRpm
+        canbusYakitSeviyesi: canBus.fuelLevel
+        canbusFuelLevel: canBus.fuelLevelAlternate
+        canbusLastFuelUsed: canBus.lastFuelUsed
+        canBusProfile:
+          exposed: canBus.profile
+          emptyStringAsNull: true
+
+        # Tachograph block. `modularSensorTemprature` is misspelled in the legacy API;
+        # the exposed name fixes it.
+        lastTachoDriver1Cardno: tachograph.driver1CardNumber
+        lastTachoDriver1Name: tachograph.driver1Name
+        lastCalibrationStatusDescription: tachograph.lastCalibrationStatus
+        tachomodel: tachograph.model
+        tachoversion: tachograph.version
+        modularSensorTemprature: modularSensorTemperature
+        serialTemperature: serialTemperature
+
+  # --------------------------------------------------------------------------
+  # Feedback on a line
+  # --------------------------------------------------------------------------
+  # The captured attempt failed with a raw .NET message, "Input string was not in a
+  # correct format.", which suggests geriBildirimNedeni is a numeric code rather than
+  # free text. The reason code list is still missing.
+  work-order-line-feedback:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/feedback
+    legacyPath: /yetkiliservis/geribildirim/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        geriBildirimNedeni: reason.code
+        geriBildirimAciklama: description
+
+  # --------------------------------------------------------------------------
+  # Completion status  (a failure here still carries a payload)
+  # --------------------------------------------------------------------------
+  work-order-line-completion-status:
+    method: GET
+    exposedPath: /api/v1/work-order-lines/{detailId}/completion-status
+    legacyPath: /yetkiliservis/cihaztamamlandi/{detailId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        durumu: completed
+
+  # --------------------------------------------------------------------------
+  # Completion writes
+  # --------------------------------------------------------------------------
+  # DELIBERATELY ABSENT: "complete work order". The collection points it at
+  # PUT /yetkiliservis/demontajtamamlandi/{detayId} with no body, which answers
+  # 411 Length Required — the same URL as complete-demontage, so the entry looks like a
+  # copy-paste error. Adding a guessed URL here would be worse than leaving the gap
+  # visible. Tracked in docs/open-items.md.
+
+  work-order-line-demontage-completion:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/demontage-completion
+    legacyPath: /yetkiliservis/demontajtamamlandi/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        cihazdurumu: deviceStatus.code
+        contactname: contactName
+
+  work-order-line-churn-completion:
+    method: PUT
+    exposedPath: /api/v1/work-order-lines/{detailId}/churn-completion
+    legacyPath: /yetkiliservis/churntamamlandi/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        # `teslimdurumu` is a numeric string here while `cihazdurumu` is a number in the
+        # demontage request — the same kind of code, two different JSON types.
+        teslimdurumu: deliveryStatus.code
+        contactname: contactName
+        rakipurun: competitorProduct
+        # The legacy key genuinely contains a Turkish letter.
+        diğer: other
+
+  # --------------------------------------------------------------------------
+  # DVR stream
+  # --------------------------------------------------------------------------
+  # No response mapping on purpose: `result` is a bare URL string, not an object, so
+  # there are no names to translate. The engine passes scalars through unchanged.
+  #
+  # The legacy API reads the camera channel from a `channel` header. A channel belongs
+  # in the URL, so the bridge exposes it as a query parameter and moves it into the
+  # header on the way out: GET /api/v1/work-order-lines/{id}/dvr-status?channel=0
+  #
+  # SECURITY: the returned URL embeds a Mobiliz-Token credential. It must be relayed to
+  # the caller but never written to a log.
+  work-order-line-dvr-status:
+    method: GET
+    exposedPath: /api/v1/work-order-lines/{detailId}/dvr-status
+    legacyPath: /yetkiliservis/DVRSonDurum/{detailId}
+    legacyHeaders:
+      channel:
+        fromQuery: channel
+        required: true
+
+  # --------------------------------------------------------------------------
+  # Vehicle search  (result is an array; the only PascalCase payload in the API)
+  # --------------------------------------------------------------------------
+  # The legacy API reads the search term from a `search` header, which is where a
+  # search term least belongs. The bridge exposes it as a query parameter and moves it
+  # into the header on the way out: GET /api/v1/vehicles?serialNumber=...
+  vehicle-search:
+    method: GET
+    exposedPath: /api/v1/vehicles
+    legacyPath: /yetkiliservis/SaseSorgulama
+    legacyHeaders:
+      search:
+        fromQuery: serialNumber
+        required: true
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        id: id
+        SaseNo: chassisNumber
+        MotorNo: engineNumber
+        AracTipi: vehicleType.id
+        Marka: brand.id
+        Model: model.id
+        # These arrive as numbers here but as strings on the work order line, for what
+        # looks like the same option set.
+        MotorHacmi: engineVolume.code
+        YakitTuru: fuelType.code
+        Sene: year.code
+        LastikMarka: tyreBrand.code
+        LastikEbat: tyreSize.code

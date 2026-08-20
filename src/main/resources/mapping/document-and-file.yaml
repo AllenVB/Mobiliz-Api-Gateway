@@ -1,0 +1,54 @@
+# Document, accessory and file endpoints of the legacy "Yetkili Servis" API.
+#
+# PROVISIONAL — exposed names are proposals until the team supplies the agreed
+# vocabulary.
+
+resources:
+
+  # --------------------------------------------------------------------------
+  # Accessory installation document
+  # --------------------------------------------------------------------------
+  # The collection lists this URL twice, as `get document` and as `update accessory`.
+  # They are the same endpoint: `PUT /yetkiliservis/dokuman`. Called with a body it
+  # answers with a document link; called without one it answers 411 Length Required,
+  # which is why the `get document` entry looks broken.
+  #
+  # It is a lookup performed with PUT — the legacy API's choice, not ours. The
+  # exposed contract keeps the method so the semantics are not misrepresented, but
+  # names it for what it actually does.
+  #
+  # NOTE the legacy key `detayid`: lower-case `id`, unlike `detayId` everywhere else.
+  accessory-document:
+    method: PUT
+    exposedPath: /api/v1/accessory-documents
+    legacyPath: /yetkiliservis/dokuman
+    request:
+      unmapped: FAIL
+      fields:
+        aksesuarId: accessory.id
+        aksesuarAdi: accessory.name
+        detayid: detailId
+        durumu: installed
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        link: documentUrl
+
+  # --------------------------------------------------------------------------
+  # File attachment upload
+  # --------------------------------------------------------------------------
+  # The file travels as base64 inside a JSON body rather than as multipart. That
+  # inflates the payload by about a third and holds the whole file in memory on both
+  # sides; worth raising with the team, but the bridge relays it as-is.
+  #
+  # No successful response captured — the attempt was made without the token header.
+  file-upload:
+    method: POST
+    exposedPath: /api/v1/work-order-lines/{detailId}/attachments
+    legacyPath: /yetkiliservis/dosyaeki/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        icerik: content
+        mimeType: mimeType
+        dosyaAdi: fileName

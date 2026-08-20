@@ -1,0 +1,36 @@
+# Legacy error messages and the exposed errors they become.
+#
+# Matching is EXACT on the trimmed message. There is no fuzzy matching on purpose:
+# guessing which error a half-matching message means is how a bridge starts lying about
+# what happened upstream. An unmatched message becomes a 400 with the code
+# UNRECOGNISED_LEGACY_ERROR, keeps the original text in `legacyMessage`, and is reported
+# so this catalog can grow from evidence.
+#
+# The legacy API has at least four error styles: Turkish prose, a dotted platform code,
+# a raw .NET exception, and ASP.NET's own `{"Message": ...}` body. The last is not an
+# envelope at all and is handled as a protocol failure (502) rather than catalogued here.
+
+errors:
+
+  - match: "Token Bilgisi Eksik"
+    status: 401
+    code: MISSING_TOKEN
+    title: "Authentication token is missing or invalid"
+
+  - match: "Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz."
+    status: 409
+    code: DEVICE_GPS_TIME_MISSING
+    title: "The device has not reported a GPS timestamp yet"
+
+  - match: "notsupported.commands.iotplatform.error"
+    status: 422
+    code: COMMAND_NOT_SUPPORTED
+    title: "The IoT platform does not support this command for this device"
+
+  # A raw .NET exception, not a message meant for a caller. It surfaced when a numeric
+  # code field was sent free text. Mapped to 400 because the caller can act on it, and
+  # reported to the team as a defect (see docs/open-items.md, section F).
+  - match: "Input string was not in a correct format."
+    status: 400
+    code: INVALID_FIELD_FORMAT
+    title: "A field was sent in a format the legacy service could not parse"

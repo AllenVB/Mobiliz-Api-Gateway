@@ -1,0 +1,11 @@
+# Normalise line endings in the repository so a Windows checkout and a Linux CI
+# agent see the same bytes. Without this the wrapper script is checked out with
+# CRLF and fails to execute on Linux.
+* text=auto eol=lf
+
+# The Windows launcher is the one file that must keep CRLF.
+gradlew.bat text eol=crlf
+
+# Never touched by normalisation.
+*.jar binary
+*.png binary
