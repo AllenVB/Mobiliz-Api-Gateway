@@ -17,6 +17,15 @@ errors:
     code: MISSING_TOKEN
     title: "Authentication token is missing or invalid"
 
+  # Distinct from the message above on purpose. "Eksik" means no token was sent;
+  # "Hatalı" means one was sent and rejected — most likely expired. The caller does
+  # different things with those: log in, versus refresh and retry. Collapsing both
+  # into one code would throw that distinction away.
+  - match: "Token Bilgisi Hatalı"
+    status: 401
+    code: INVALID_TOKEN
+    title: "The authentication token is not valid or has expired"
+
   - match: "Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz."
     status: 409
     code: DEVICE_GPS_TIME_MISSING

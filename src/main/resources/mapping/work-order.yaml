@@ -104,10 +104,16 @@ resources:
         saseno: chassisNumber
         otokocmu: otokocCustomer
 
-  # The collection points this at PUT /yetkiliservis/servistalepleri/0, which answers
-  # 405 Method Not Allowed with ASP.NET's own error body. The request payload is
-  # field-for-field the response of servistalepsatiri/{detayId}, so that is almost
-  # certainly the intended target. CONFIRM WITH THE TEAM before relying on this.
+  # UNCONFIRMED TARGET — read this before relying on it.
+  #
+  # The Hoppscotch collection points this operation at PUT /yetkiliservis/servistalepleri/0,
+  # which answers 405 with `Allow: GET`. That route is read-only and accepts no write
+  # method, so the saved request cannot ever have worked.
+  #
+  # The payload is field-for-field the response of servistalepsatiri/{detayId}, and this
+  # API already serves GET and PUT from one path elsewhere (immobilizercheck, servisdetay),
+  # so that is the assumed target. It has not been verified against the real API.
+  # Tracked as A9 in docs/open-items.md.
   work-order-line-update:
     method: PUT
     exposedPath: /api/v1/work-order-lines/{detailId}

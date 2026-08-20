@@ -298,6 +298,7 @@ Not expanded.
 | Legacy `message` | Exposed status | Code |
 |---|---|---|
 | `Token Bilgisi Eksik` | 401 | `MISSING_TOKEN` |
+| `Token Bilgisi Hatalı` | 401 | `INVALID_TOKEN` — sent but rejected, most likely expired |
 | `Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz.` | 409 | `DEVICE_GPS_TIME_MISSING` |
 | `Input string was not in a correct format.` | 502 | *(raw .NET exception, not a user-facing message — report upstream)* |
 

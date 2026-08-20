@@ -456,6 +456,27 @@ class BridgeEndToEndTest {
         }
 
         @Test
+        void shouldTellAMissingTokenApartFromARejectedOne() {
+            // "Eksik" means none was sent; "Hatalı" means one was sent and rejected. The
+            // caller does different things with those, so they must not share a code.
+            stubGet("/yetkiliservis/servistalepsatiri/abc", failure("Token Bilgisi Hatalı"));
+
+            ResponseEntity<JsonNode> rejected = callGet("/api/v1/work-order-lines/abc");
+
+            assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(rejected.getBody().get("code").asText()).isEqualTo("INVALID_TOKEN");
+
+            LEGACY.resetAll();
+            stubGet("/yetkiliservis/servistalepsatiri/abc", failure("Token Bilgisi Eksik"));
+
+            ResponseEntity<JsonNode> missing = callGet("/api/v1/work-order-lines/abc");
+
+            assertThat(missing.getBody().get("code").asText())
+                    .as("same status, different cause, different code")
+                    .isEqualTo("MISSING_TOKEN");
+        }
+
+        @Test
         void shouldNotRepeatItselfInTheProblemDocument() {
             stubGet("/yetkiliservis/servistalepsatiri/abc", failure("Token Bilgisi Eksik"));
 

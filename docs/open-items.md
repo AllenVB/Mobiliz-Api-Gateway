@@ -22,7 +22,6 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 | A6 | **Legacy base URLs (test / production) and a test account** | Every capture so far hit **production**. Verification runs against WireMock only. | Base URLs plus a non-production account |
 | A7 | **Project / package name confirmation** | `com.mobiliz.ysbridge`, artifact `ys-bridge`, chosen by us. Renaming is cheap now, expensive after review. | A yes, or the team's preferred name |
 | A8 | **Deployment format** | Docker image, or a jar on an existing host? Affects config externalisation and health checks. | The team's answer |
-| A9 | **Correct URL for *update work order detail*** | The collection points at `PUT /yetkiliservis/servistalepleri/0` → **405**. The request payload matches `servistalepsatiri/{detayId}` field for field, so the mapping assumes that URL and says so in a comment. | Confirmation, or a capture of a working call |
 | A10 | **Correct URL and body for *complete work order*** | The collection points at `PUT /yetkiliservis/demontajtamamlandi/{detayId}` with no body → **411**. That is the *complete demontage* URL, so it looks like a copy-paste error. **The endpoint is deliberately absent from the mapping** rather than guessed. | The real URL and body |
 | A11 | **What the `0` in `/servistalepleri/0` selects, and what it returns** | Probably a status filter. Modelled as a path variable so nothing is hardcoded; it should become a named query parameter once known. No response was ever captured. | Its meaning plus one captured response |
 | A12 | **`canbusYakitSeviyesi` vs `canbusFuelLevel`** | Vehicle status carries both; they look like one reading under two names. Both were null in the capture. Currently exposed as `canBus.fuelLevel` and `canBus.fuelLevelAlternate`. | Which is which |
@@ -31,13 +30,15 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 | A15 | **Polarity of `sehirIciDisi`** | "şehir içi / şehir dışı" — the name does not say which value means which. | Confirmation |
 | **A16** | **Request body of `sendstatuscommand`** | The URL is confirmed but the body was never captured (411). It is the **only** write endpoint that relays its body untranslated, which defeats the bridge's purpose for that one call. A test pins this down so it cannot be forgotten. | One captured request |
 | **A17** | **Success payload of `servisdetay` (GET)** | Both attempts were made without the token header. No response mapping exists, so the payload is relayed untranslated. | One successful capture |
+| **A19** | **Does the line update replace or merge?** | `PUT /servistalepsatiri/{detayId}` is confirmed to accept writes, but no write has actually executed — the one attempt was rejected for an invalid token. So it is still unknown whether a `null` field clears the stored value or means "leave alone". This decides whether callers must send the whole record every time, and whether the bridge should strip nulls before forwarding. **Do not test this against a real record without capturing its current values first.** | One write with a valid token against a record whose contents are known, followed by a read |
 | **A18** | **Feedback reason codes** | `geriBildirimNedeni` sent as free text produced `"Input string was not in a correct format."`, so it is a numeric code. | The code list (likely part of A4) |
 
 ### Closed
 
 | # | Item | Outcome |
 |---|---|---|
-| ~~A1~~ | How the token is sent | **CLOSED.** Plain request header `token: <GUID>`, lower-case, **no `Bearer` prefix**, inherited at folder level. Implemented and tested end to end. |
+| ~~A1~~ | How the token is sent | **CLOSED.** Plain request header `token: <GUID>`, lower-case, **no `Bearer` prefix**, inherited at folder level. Tokens do expire or get invalidated — a stale one produces `Token Bilgisi Hatalı`, distinct from the `Eksik` a missing one produces. The bridge relays the caller's token and does not manage its lifetime; the two messages are catalogued separately so a client can tell "log in" from "refresh". |
+| ~~A9~~ | Correct URL for *update work order detail* | **CLOSED.** `PUT /yetkiliservis/servistalepsatiri/{detayId}` is the right target. Proven by elimination: the collection's URL answers `405` with `Allow: GET`, while this one answers with the application's own envelope. A 405 is decided at routing, before authentication — so receiving an envelope at all means routing and method were accepted. The mapping already pointed here. |
 | ~~A3~~ | Successful response for `sifremiunuttum` | **CLOSED.** `result: null` → the bridge answers **204 No Content**. The earlier 403 was Cloudflare, not the endpoint. |
 
 ---
@@ -128,6 +129,7 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 
 1. **Production account password is `123456`** and was visible in a screenshot. Rotate it.
 2. **`GET` requests answer `201 Created`**, and so do application errors. HTTP status carries no information at all.
+2b. **The collection's *update work order detail* request targets a read-only route.** `/yetkiliservis/servistalepleri/{x}` answers `405` with `Allow: GET`, so that saved request has never worked. Anyone using the collection to test that operation is testing nothing.
 3. **`geribildirim` leaks a raw .NET exception** to the caller: `"Input string was not in a correct format."`
 4. **`405` and `411` responses bypass the envelope**, returning ASP.NET / IIS defaults. Any client parsing the envelope breaks on them.
 5. **The DVR response embeds a `Mobiliz-Token` credential** in a URL query string.
@@ -152,6 +154,7 @@ Last reviewed: 2026-08-20, after the contract-evolution, error-handling and pagi
 | Legacy message | Exposed status | Code |
 |---|---|---|
 | `Token Bilgisi Eksik` | 401 | `MISSING_TOKEN` |
+| `Token Bilgisi Hatalı` | 401 | `INVALID_TOKEN` |
 | `Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz.` | 409 | `DEVICE_GPS_TIME_MISSING` |
 | `notsupported.commands.iotplatform.error` | 422 | `COMMAND_NOT_SUPPORTED` |
 | `Input string was not in a correct format.` | 400 | `INVALID_FIELD_FORMAT` |
