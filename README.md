@@ -181,7 +181,7 @@ removes a whole class of mistakes.
             PASIF: INACTIVE
         serino:
           exposed: serialNumber
-          type: INTEGER                         # legacy sends "7026574", expose a number
+          type: INTEGER                         # legacy sends "1234567", expose a number
         montajDokumani:
           exposed: installationDocument
           emptyStringAsNull: true               # legacy sends "", expose null
@@ -223,7 +223,7 @@ query parameters and let the bridge move them:
 | `DROP` | silently omitted | rarely; prefer one of the above |
 
 > **`type` caveat.** It declares the *exposed* type. Translating back renders the
-> canonical string form (`7026574` → `"7026574"`), which matches the case it exists for:
+> canonical string form (`1234567` → `"1234567"`), which matches the case it exists for:
 > a legacy API that quotes its numbers. Declare it only for fields the legacy API sends
 > as strings.
 
