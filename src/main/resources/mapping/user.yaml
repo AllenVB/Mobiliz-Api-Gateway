@@ -1,7 +1,16 @@
 # User endpoints of the legacy "Yetkili Servis" API.
 #
-# PROVISIONAL — exposed names are proposals until the team supplies the agreed
-# vocabulary.
+# NAMING STATUS — read before editing an exposed name.
+#
+#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
+#   RESPONSE fields : still proposals. The EN document covers request bodies only;
+#                     roughly 110 response fields have no agreed name yet.
+#   PATHS           : still the resource-oriented ones chosen here. The EN document
+#                     translates the legacy paths instead (/authorized-service/login);
+#                     which style to adopt is decided once the full document arrives.
+#
+# Two request bodies are also still proposals, because the EN document omits them:
+# the work order line update, and send-status-command.
 
 resources:
 
@@ -25,5 +34,5 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        KVKK: dataPrivacy
-        ETK: marketing
+        KVKK: KVKK
+        ETK: ETK

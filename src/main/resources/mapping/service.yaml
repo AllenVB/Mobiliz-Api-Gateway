@@ -1,7 +1,16 @@
 # Service endpoints of the legacy "Yetkili Servis" API.
 #
-# PROVISIONAL — exposed names are proposals until the team supplies the agreed
-# vocabulary.
+# NAMING STATUS — read before editing an exposed name.
+#
+#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
+#   RESPONSE fields : still proposals. The EN document covers request bodies only;
+#                     roughly 110 response fields have no agreed name yet.
+#   PATHS           : still the resource-oriented ones chosen here. The EN document
+#                     translates the legacy paths instead (/authorized-service/login);
+#                     which style to adopt is decided once the full document arrives.
+#
+# Two request bodies are also still proposals, because the EN document omits them:
+# the work order line update, and send-status-command.
 
 resources:
 
@@ -37,20 +46,20 @@ resources:
       fields:
         # Which parts were taken in for maintenance.
         bakimdakicihaz: deviceUnderMaintenance
-        bakimdakikablotesisat: wiringUnderMaintenance
-        bakimdakigsm: simUnderMaintenance
-        bakimdakiaksesuar1: accessoryUnderMaintenance1
-        bakimdakiaksesuar2: accessoryUnderMaintenance2
-        bakimdakiaksesuar3: accessoryUnderMaintenance3
+        bakimdakikablotesisat: cableWiringUnderMaintenance
+        bakimdakigsm: gsmUnderMaintenance
+        bakimdakiaksesuar1: maintenanceAccessory1
+        bakimdakiaksesuar2: maintenanceAccessory2
+        bakimdakiaksesuar3: maintenanceAccessory3
 
         # Diagnosis and resolution, free text in the capture.
-        sorununkaynagi: faultSource
-        sorununkaynagidetay: faultSourceDetail
-        cozumdetay: resolutionDetail
+        sorununkaynagi: problemSource
+        sorununkaynagidetay: problemSourceDetail
+        cozumdetay: solutionDetail
 
-        resimyukle: photoRequired
+        resimyukle: uploadImage
         # A numeric code; its list is unknown. See docs/open-items.md.
-        kargodurumu: shipmentStatus.code
+        kargodurumu: cargoStatus
 
   # --------------------------------------------------------------------------
   # Maintenance shipment details, write
@@ -65,8 +74,8 @@ resources:
       fields:
         # A numeric string code selecting the carrier; `kargofirmasidiger` carries a
         # free-text name when the code means "other". Arrived as "" rather than null.
-        kargofirmasi: carrier.code
+        kargofirmasi: cargoCompany
         kargofirmasidiger:
-          exposed: carrier.otherName
+          exposed: cargoCompanyOther
           emptyStringAsNull: true
-        kargotakipno: trackingNumber
+        kargotakipno: cargoTrackingNo

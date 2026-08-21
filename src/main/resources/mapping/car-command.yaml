@@ -1,7 +1,16 @@
 # Car Command endpoints of the legacy "Yetkili Servis" API.
 #
-# PROVISIONAL — exposed names are proposals until the team supplies the agreed
-# vocabulary. Only the right-hand side of each mapping line changes when they do.
+# NAMING STATUS — read before editing an exposed name.
+#
+#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
+#   RESPONSE fields : still proposals. The EN document covers request bodies only;
+#                     roughly 110 response fields have no agreed name yet.
+#   PATHS           : still the resource-oriented ones chosen here. The EN document
+#                     translates the legacy paths instead (/authorized-service/login);
+#                     which style to adopt is decided once the full document arrives.
+#
+# Two request bodies are also still proposals, because the EN document omits them:
+# the work order line update, and send-status-command.
 
 resources:
 
@@ -18,7 +27,7 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        durum: active
+        durum: status
 
   immobilizer-update:
     method: PUT
@@ -27,7 +36,7 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        durum: active
+        durum: status
     # Response carries no payload on success, which the bridge turns into 204.
 
   # --------------------------------------------------------------------------
@@ -48,10 +57,10 @@ resources:
       fields:
         # Each of these is a label paired with its code — one concept per object, so a
         # third attribute can be added later without changing what already exists.
-        komut: command.name
-        komutid: command.code
-        durum: state.name
-        durumid: state.code
+        komut: command
+        komutid: commandId
+        durum: status
+        durumid: statusId
 
   # --------------------------------------------------------------------------
   # Status command

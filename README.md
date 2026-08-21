@@ -296,6 +296,13 @@ src/main/resources/
 
 ## Status
 
-The exposed English names are **provisional**. They were chosen here and are waiting on
-the team's agreed vocabulary; replacing them touches only the right-hand side of each
-mapping line. The tests were written so that rename cannot break them silently.
+**Request** field names come from the team's agreed vocabulary and are settled.
+
+**Response** field names are still this project's proposals: the document that arrived
+covers request bodies only, leaving roughly 110 response fields unnamed. So are the paths —
+the document translates the legacy ones instead, and which style to adopt is an open
+decision (A20–A22 in `docs/open-items.md`).
+
+Applying the agreed request names touched 25 lines of YAML and two test classes. Every
+coverage and round-trip test passed without modification, which is what the rename-safety
+guarantee is for.

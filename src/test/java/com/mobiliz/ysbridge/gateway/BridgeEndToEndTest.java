@@ -151,8 +151,8 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"username": "test-user", "password": "test-password",
-                             "platform": "IOS", "deviceToken": null}""",
+                            {"userName": "test-user", "password": "test-password",
+                             "osVersion": "IOS", "deviceToken": null}""",
                             null);
 
             // The legacy API must have been given its own vocabulary.
@@ -191,7 +191,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"username": "u", "password": "p", "platform": "IOS"}""",
+                            {"userName": "u", "password": "p", "osVersion": "IOS"}""",
                             null);
 
             assertThat(response.getStatusCode())
@@ -206,7 +206,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"username": "u", "password": "p", "sifre": "oops"}""",
+                            {"userName": "u", "password": "p", "sifre": "oops"}""",
                             null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -436,7 +436,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/password-reset-requests",
                             """
-                            {"username": "test-user"}""",
+                            {"userName": "test-user"}""",
                             null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -542,8 +542,8 @@ class BridgeEndToEndTest {
                             HttpMethod.PUT,
                             "/api/v1/work-order-lines/abc/car-command",
                             """
-                            {"command": {"name": "siren", "code": "1"},
-                             "state": {"name": "on", "code": "1"}}""",
+                            {"command": "siren", "commandId": "1",
+                             "status": "on", "statusId": "1"}""",
                             authenticated());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);

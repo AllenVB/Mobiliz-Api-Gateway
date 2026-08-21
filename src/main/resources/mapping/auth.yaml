@@ -9,6 +9,18 @@
 # arrive quoted; translating back renders the canonical string form. Declare it only
 # for fields the legacy API sends as strings.
 
+# NAMING STATUS — read before editing an exposed name.
+#
+#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
+#   RESPONSE fields : still proposals. The EN document covers request bodies only;
+#                     roughly 110 response fields have no agreed name yet.
+#   PATHS           : still the resource-oriented ones chosen here. The EN document
+#                     translates the legacy paths instead (/authorized-service/login);
+#                     which style to adopt is decided once the full document arrives.
+#
+# Two request bodies are also still proposals, because the EN document omits them:
+# the work order line update, and send-status-command.
+
 resources:
 
   auth-login:
@@ -22,13 +34,13 @@ resources:
       # Our contract, our field names: anything we do not recognise is a client error.
       unmapped: FAIL
       fields:
-        kullaniciAdi: username
+        kullaniciAdi: userName
         sifre: password
         deviceToken: deviceToken
         osversiyon:
           # Holds "IOS" / "ANDROID" — a platform, not a version, despite the legacy name.
           # The table also makes any unexpected value visible in the coverage report.
-          exposed: platform
+          exposed: osVersion
           values:
             IOS: IOS
             ANDROID: ANDROID
@@ -65,7 +77,7 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        kullaniciAdi: username
+        kullaniciAdi: userName
 
     # PROVISIONAL: no successful response has been captured for this endpoint. The one
     # attempt was intercepted by Cloudflare, which answered 403 with an HTML challenge

@@ -1,11 +1,16 @@
 # Work Order endpoints of the legacy "Yetkili Servis" API.
 #
-# ============================================================================
-# PROVISIONAL — the exposed names below are proposals, not agreed vocabulary.
-# The team will supply the intended English names; only the right-hand side of
-# each line changes when they do. The structure, paths and engine behaviour
-# stay as they are.
-# ============================================================================
+# NAMING STATUS — read before editing an exposed name.
+#
+#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
+#   RESPONSE fields : still proposals. The EN document covers request bodies only;
+#                     roughly 110 response fields have no agreed name yet.
+#   PATHS           : still the resource-oriented ones chosen here. The EN document
+#                     translates the legacy paths instead (/authorized-service/login);
+#                     which style to adopt is decided once the full document arrives.
+#
+# Two request bodies are also still proposals, because the EN document omits them:
+# the work order line update, and send-status-command.
 #
 # Reading the file: the key is always the legacy (Turkish) name, the value is the name
 # this bridge exposes. A dot in the exposed name groups the field into a nested object.
@@ -223,8 +228,8 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        geriBildirimNedeni: reason.code
-        geriBildirimAciklama: description
+        geriBildirimNedeni: feedbackReason
+        geriBildirimAciklama: feedbackDescription
 
   # --------------------------------------------------------------------------
   # Completion status  (a failure here still carries a payload)
@@ -254,7 +259,7 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        cihazdurumu: deviceStatus.code
+        cihazdurumu: deviceStatus
         contactname: contactName
 
   work-order-line-churn-completion:
@@ -266,7 +271,7 @@ resources:
       fields:
         # `teslimdurumu` is a numeric string here while `cihazdurumu` is a number in the
         # demontage request — the same kind of code, two different JSON types.
-        teslimdurumu: deliveryStatus.code
+        teslimdurumu: deliveryStatus
         contactname: contactName
         rakipurun: competitorProduct
         # The legacy key genuinely contains a Turkish letter.

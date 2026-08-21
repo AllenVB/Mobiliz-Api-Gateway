@@ -8,7 +8,7 @@ Status key: **BLOCKED** (needs information we do not have) · **PLANNED** (sched
 **LIMITATION** (deliberate design boundary, documented) · **DEBT** (was promised, not done)
 · **CLOSED** (kept for the record).
 
-Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees and of every reachable HTTP status.
+Last reviewed: 2026-08-21, after the team's English request vocabulary was applied.
 
 ---
 
@@ -31,6 +31,9 @@ Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees an
 | **A16** | **Request body of `sendstatuscommand`** | The URL is confirmed but the body was never captured (411). It is the **only** write endpoint that relays its body untranslated, which defeats the bridge's purpose for that one call. A test pins this down so it cannot be forgotten. | One captured request |
 | **A17** | **Success payload of `servisdetay` (GET)** | Both attempts were made without the token header. No response mapping exists, so the payload is relayed untranslated. | One successful capture |
 | **A19** | **Does the line update replace or merge?** | `PUT /servistalepsatiri/{detayId}` is confirmed to accept writes, but no write has actually executed — the one attempt was rejected for an invalid token. So it is still unknown whether a `null` field clears the stored value or means "leave alone". This decides whether callers must send the whole record every time, and whether the bridge should strip nulls before forwarding. **Do not test this against a real record without capturing its current values first.** | One write with a valid token against a record whose contents are known, followed by a read |
+| **A20** | **English names for the ~110 response fields** | The team's "Yetkili Servis -EN" document arrived and covers **request bodies only**. Every request field it names has been applied. Responses — the login result, vehicle status, work order line detail, vehicle search, reference data — carry roughly 110 fields with no agreed name, and those are still this project's proposals. | The response half of the EN document |
+| **A21** | **Two request bodies the EN document omits** | The work order line update (28 fields) and `send-status-command` have no English names either; the document lists their endpoints without bodies. | The same follow-up document |
+| **A22** | **Which path style to adopt** | The EN document translates the legacy paths (`/authorized-service/login`) and carries no version segment. This project exposes resource-oriented paths under `/api/v1/`. Deliberately **not** changed yet: switching now and again when the full document lands would be churn, and dropping versioning entirely should be a conscious decision rather than a side effect. | A decision once the full document is in |
 | **A18** | **Feedback reason codes** | `geriBildirimNedeni` sent as free text produced `"Input string was not in a correct format."`, so it is a numeric code. | The code list (likely part of A4) |
 
 ### Closed
@@ -65,6 +68,7 @@ Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees an
 | ~~B6~~ | Correlation id and secret handling | **DONE.** `X-Correlation-Id` is honoured, sanitised, bounded and echoed. Request and response **bodies are never logged**, and the coverage recorder deliberately records the *path* of an unmapped value, never the value — payloads carry tokens and personal data. |
 | ~~B8~~ | Timeouts | **DONE.** Connect and read timeouts configurable; redirects never followed. |
 | ~~B9~~ | README | **DONE.** Includes the "how to add an endpoint" workflow. |
+| ~~B20~~ | Agreed request vocabulary applied | **DONE.** 25 exposed request names replaced from the team's document across six mapping files. Only the two test classes that assert names needed touching; every coverage and round-trip test passed unchanged, which is the rename-safety guarantee doing its job rather than being claimed. |
 | ~~B10~~ | Per-endpoint legacy headers | **DONE.** Exposed as query parameters and moved into headers on the way out. |
 | ~~B14a~~ | Authentication at the gateway | **DONE.** `authentication: TOKEN \| NONE` per resource, default `TOKEN`. Unauthenticated calls are rejected with 401 and `WWW-Authenticate` before the legacy API is troubled. The exposed contract uses `Authorization: Bearer`; the legacy `token` header is an implementation detail of the upstream. |
 | ~~B15~~ | Collection paging | **DONE.** Every collection is an object with `items` + `page`, never a bare array, and always paged. See C12 for what this pagination is and is not. |
@@ -116,6 +120,7 @@ Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees an
 | E3 | Gradle 8.11.1, not 9.2.1 | Boot 3.5 supports Gradle 7.6.4+ and 8.4+; Gradle 9 is not on that list |
 | E4 | The YAML key is always the legacy name | One reading order removes a whole class of mistakes |
 | E5 | The legacy envelope is stripped | The legacy status carries no information; `success` decides |
+| **E15** | **The EN document's flat names were adopted as given, including where they undo a nesting choice** | `komut`+`komutid` become `command`+`commandId` rather than `command.name`+`command.code`; `kargodurumu` becomes `cargoStatus` rather than `shipmentStatus.code`. The team owns the vocabulary. The cost is recorded rather than argued: when a label is later wanted alongside one of these codes, `cargoStatus: "1"` has to become an object, which breaks callers — the nested form would only have gained a field. Worth raising once; not worth overriding them on. |
 | E6 | The exposed names are provisional | Only the right-hand side of each mapping line changes when the vocabulary arrives; the tests are name-independent by construction |
 | E7 | An endpoint with an unconfirmed URL is left out, not guessed | Applies to *complete work order* (A10). A guessed URL looks like coverage while silently doing nothing |
 | **E8** | **One catch-all controller, not one per endpoint** | There is no per-endpoint logic to hold. Everything that differs between endpoints is in the mapping documents, which is what makes adding an endpoint a configuration change |
@@ -149,6 +154,28 @@ Last reviewed: 2026-08-20, after a full audit of the config-driven guarantees an
 16. **`detayid` is lower-case** in the `dokuman` request while every other endpoint uses `detayId`.
 17. **`durum` means different things in different endpoints** — a status code on a work order line, a plain boolean on the immobilizer.
 18. **The reference-data endpoint returns every list at once** (~0.92 MB) with no way to request one.
+
+---
+
+## G. Defects in the API documents themselves
+
+The team's own `Yetkili Servis -TR` document was compared against what the API actually
+does. It describes 27 endpoints; every one of them is mapped here. Six problems in the
+document are worth reporting, because anyone following it hits them.
+
+1. **`PUT /yetkiliservis/servistalepleri/0` is documented but cannot work.** Its 405 carries
+   `Allow: GET`. The Hoppscotch entry was not a copy-paste slip — it came from here.
+2. **`Content-Length = 3500` is documented as a header** for `sendstatuscommand`. It is not a
+   header anyone sets: it is computed from the body. Following this line makes the request
+   hang until it times out, because the server waits for 3500 bytes that never arrive. This
+   looks like a workaround for the 411 that was written down instead of solved.
+3. **`PUT /yetkiliservis/demontajtamamlandi/{detayId}` is listed twice**, once without a body.
+   The bodyless entry is what the collection calls *complete work order*, and it answers 411.
+4. **`geriBildirimNedeni` is shown as free text** (`"Geri bildirim nedeni örnek"`), but the API
+   rejects that with `Input string was not in a correct format.` — it wants a numeric code.
+5. **The document contains live credentials** (`sahadestek1` / `123456`).
+6. **No response body is documented anywhere** — requests only. This is why roughly 110
+   response fields still have no agreed English name (A20).
 
 ---
 

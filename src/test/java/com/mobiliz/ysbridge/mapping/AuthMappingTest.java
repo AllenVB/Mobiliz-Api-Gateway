@@ -188,8 +188,8 @@ class AuthMappingTest {
                     translator.translate(
                             json(
                                     """
-                                    {"username": "test-user", "password": "test-password",
-                                     "platform": "IOS", "deviceToken": null}"""),
+                                    {"userName": "test-user", "password": "test-password",
+                                     "osVersion": "IOS", "deviceToken": null}"""),
                             login().request(),
                             Direction.TO_LEGACY,
                             TranslationObserver.noop());
@@ -207,7 +207,7 @@ class AuthMappingTest {
             JsonNode request =
                     json(
                             """
-                            {"username": "test-user", "password": "test-password", "sifre": "oops"}""");
+                            {"userName": "test-user", "password": "test-password", "sifre": "oops"}""");
 
             assertThatThrownBy(
                             () ->
@@ -232,7 +232,7 @@ class AuthMappingTest {
                     translator.translate(
                             json(
                                     """
-                                    {"username": "test-user"}"""),
+                                    {"userName": "test-user"}"""),
                             resource.request(),
                             Direction.TO_LEGACY,
                             TranslationObserver.noop());
