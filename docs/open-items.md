@@ -8,7 +8,7 @@ Status key: **BLOCKED** (needs information we do not have) · **PLANNED** (sched
 **LIMITATION** (deliberate design boundary, documented) · **DEBT** (was promised, not done)
 · **CLOSED** (kept for the record).
 
-Last reviewed: 2026-08-21, after the team's English request vocabulary was applied.
+Last reviewed: 2026-08-24, after a full re-run of the collection with a working token.
 
 ---
 
@@ -22,15 +22,17 @@ Last reviewed: 2026-08-21, after the team's English request vocabulary was appli
 | A6 | **Legacy base URLs (test / production) and a test account** | Every capture so far hit **production**. Verification runs against WireMock only. | Base URLs plus a non-production account |
 | A7 | **Project / package name confirmation** | `com.mobiliz.ysbridge`, artifact `ys-bridge`, chosen by us. Renaming is cheap now, expensive after review. | A yes, or the team's preferred name |
 | A8 | **Deployment format** | Docker image, or a jar on an existing host? Affects config externalisation and health checks. | The team's answer |
-| A10 | **Correct URL and body for *complete work order*** | The collection points at `PUT /yetkiliservis/demontajtamamlandi/{detayId}` with no body → **411**. That is the *complete demontage* URL, so it looks like a copy-paste error. **The endpoint is deliberately absent from the mapping** rather than guessed. | The real URL and body |
+| A10 | **Correct URL and body for *complete work order*** | The collection points at `PUT /yetkiliservis/demontajtamamlandi/{detayId}` with no body → **411**. That is the *complete demontage* URL, so it looks like a copy-paste error. **The endpoint is deliberately absent from the mapping** rather than guessed. **Re-confirmed 2026-08-24 with the token header visibly attached** (`content-type` and `token` both present in the request) and still 411 — so this is not an authentication problem and never was. IIS rejects the bodyless request before the application sees it. Closing a work order therefore has no known working address. | The real URL and body |
+| **A23** | **`/servistalepleri/0` never answers** | Captured: Cloudflare returns **524 "A timeout occurred"** after **125 seconds**. That code means Cloudflare did reach the origin and the origin never replied within its window. So the endpoint is not slow — it hangs. This is a backend fault, not a client one, and it is in production. The bridge already handles it (`504 UPSTREAM_TIMEOUT` after the configured read timeout rather than a 125-second wait), but handling is not fixing. | The backend team investigating why that query does not complete |
 | A11 | **What the `0` in `/servistalepleri/0` selects, and what it returns** | Probably a status filter. Modelled as a path variable so nothing is hardcoded; it should become a named query parameter once known. No response was ever captured. | Its meaning plus one captured response |
 | A12 | **`canbusYakitSeviyesi` vs `canbusFuelLevel`** | Vehicle status carries both; they look like one reading under two names. Both were null in the capture. Currently exposed as `canBus.fuelLevel` and `canBus.fuelLevelAlternate`. | Which is which |
 | A13 | **Timezone of the naive timestamps** | Values arrive as `2026-08-20T08:12:57` with no offset. The bridge does not invent one. | The zone these are recorded in |
-| A14 | **Success shape of `cihaztamamlandi`** | Only the failure case was captured (`{"durumu": false}` alongside `success: false`). | One successful capture |
+| A14 | **Success shape of `cihaztamamlandi`** | Only failure cases have ever been captured, now **two of them**: `Cihaz GPS Time Dolu Değil` and, on 2026-08-24, `Kontak Aktif Durumda. Lütfen Kapatınız.` Both carried `{"durumu": false}` alongside `success: false`, which is what the "a failure may carry data" rule exists for. What the endpoint returns when it *succeeds* is still unknown — quite possibly `{"durumu": true}` and nothing else, but that is a guess and is not mapped as one. | One successful capture |
 | A15 | **Polarity of `sehirIciDisi`** | "şehir içi / şehir dışı" — the name does not say which value means which. | Confirmation |
 | **A16** | **Request body of `sendstatuscommand`** | The URL is confirmed but the body was never captured (411). It is the **only** write endpoint that relays its body untranslated, which defeats the bridge's purpose for that one call. A test pins this down so it cannot be forgotten. | One captured request |
-| **A17** | **Success payload of `servisdetay` (GET)** | Both attempts were made without the token header. No response mapping exists, so the payload is relayed untranslated. | One successful capture |
-| **A19** | **Does the line update replace or merge?** | `PUT /servistalepsatiri/{detayId}` is confirmed to accept writes, but no write has actually executed — the one attempt was rejected for an invalid token. So it is still unknown whether a `null` field clears the stored value or means "leave alone". This decides whether callers must send the whole record every time, and whether the bridge should strip nulls before forwarding. **Do not test this against a real record without capturing its current values first.** | One write with a valid token against a record whose contents are known, followed by a read |
+| **A17** | **Success payload of the five endpoints that have never succeeded** | `servisdetay` (GET and PUT), `servisdetay` maintenance (PUT), `dosyaeki` (POST) and `kullanici` (PUT) have answered `Token Bilgisi Eksik` on every attempt including the 2026-08-24 re-run. Their Hoppscotch entries carry only `content-type`; the `token` header inherited by the working requests is absent from these five. **This is a collection problem, not a service one** — the same token succeeded on twelve other endpoints in the same run. Until one succeeds, no response mapping exists for them and payloads are relayed untranslated: visibly incomplete rather than silently wrong. | Adding the `token` header to those five entries and capturing one response each |
+| **A24** | **`immobilizercheck` (PUT) rejects with a vendor-record fault** | The 2026-08-24 run returned `Vendor Bilgisinde Hata. Lütfen Teknik Destek Ekibi ile Görüşünüz.` — the legacy API telling the caller to contact support, i.e. broken data on the device record rather than anything wrong with the request. Catalogued as **422 `DEVICE_VENDOR_DATA_INVALID`** so it does not read as a retryable conflict. An earlier run of the same endpoint succeeded with `result: null`, so the endpoint itself works; this is one device's data. | The team confirming whether this is one device or a class of them |
+| **A19** | **Does the line update replace or merge?** | `PUT /servistalepsatiri/{detayId}` is confirmed to accept writes, but **no write has ever executed**. The first attempt was rejected for an invalid token; the 2026-08-24 re-run, with a working token, was rejected for a different reason — the saved request has a literal `0` in the URL and the legacy API answered `Guid should contain 32 digits with 4 dashes`. So it is still unknown whether a `null` field clears the stored value or means "leave alone". This decides whether callers must send the whole record every time, and whether the bridge should strip nulls before forwarding. **Do not test this against a real record without capturing its current values first.** | One write against a real `detayId` whose contents are known, followed by a read |
 | **A20** | **English names for the ~110 response fields** | The team's "Yetkili Servis -EN" document arrived and covers **request bodies only**. Every request field it names has been applied. Responses — the login result, vehicle status, work order line detail, vehicle search, reference data — carry roughly 110 fields with no agreed name, and those are still this project's proposals. | The response half of the EN document |
 | **A21** | **Two request bodies the EN document omits** | The work order line update (28 fields) and `send-status-command` have no English names either; the document lists their endpoints without bodies. | The same follow-up document |
 | **A22** | **Which path style to adopt** | The EN document translates the legacy paths (`/authorized-service/login`) and carries no version segment. This project exposes resource-oriented paths under `/api/v1/`. Deliberately **not** changed yet: switching now and again when the full document lands would be churn, and dropping versioning entirely should be a conscious decision rather than a side effect. | A decision once the full document is in |
@@ -57,6 +59,7 @@ Last reviewed: 2026-08-21, after the team's English request vocabulary was appli
 | B12 | **Turning option-set codes into enums** | Depends on A4. | After A4 |
 | **B13** | **Caching the reference-data response** | It is ~0.92 MB and holds every dropdown at once. Every caller fetching all of it to use one list is wasteful; a cache plus a `?list=` filter is the obvious improvement. | After A4, when the list names are known |
 | **B14** | **Per-endpoint idempotency and rate limiting** | A gateway is the natural place for both, but neither has a requirement yet. | When there is one |
+| **B21** | **Declaring a path variable's format in the mapping YAML** | `Guid should contain 32 digits with 4 dashes` proved every `{detailId}` the legacy API takes is a GUID. The bridge already rejects a missing token and an unusable `page`/`size` before making the upstream call, on the principle that a caller's mistake should never become upstream load; a malformed identifier belongs in the same group. Deliberately **not** built yet: it needs a new key on the resource (`pathVariables: { detailId: GUID }`), strict validation of it at load time, and a decision on whether an unknown format is a startup failure. That is a feature, not a catalog entry, and the catalog covers the case correctly in the meantime (**400 `INVALID_IDENTIFIER_FORMAT`**). | A decision that pre-validation is worth the extra mapping surface |
 
 ### Closed
 
@@ -137,6 +140,7 @@ Last reviewed: 2026-08-21, after the team's English request vocabulary was appli
 
 1. **Production account password is `123456`** and was visible in a screenshot. Rotate it.
 2. **`GET` requests answer `201 Created`**, and so do application errors. HTTP status carries no information at all.
+1b. **`GET /yetkiliservis/servistalepleri/0` does not respond at all.** Cloudflare times it out at 524 after 125 seconds. An endpoint in production that never completes.
 2b. **The collection's *update work order detail* request targets a read-only route.** `/yetkiliservis/servistalepleri/{x}` answers `405` with `Allow: GET`, so that saved request has never worked. Anyone using the collection to test that operation is testing nothing.
 3. **`geribildirim` leaks a raw .NET exception** to the caller: `"Input string was not in a correct format."`
 4. **`405` and `411` responses bypass the envelope**, returning ASP.NET / IIS defaults. Any client parsing the envelope breaks on them.
@@ -154,6 +158,9 @@ Last reviewed: 2026-08-21, after the team's English request vocabulary was appli
 16. **`detayid` is lower-case** in the `dokuman` request while every other endpoint uses `detayId`.
 17. **`durum` means different things in different endpoints** — a status code on a work order line, a plain boolean on the immobilizer.
 18. **The reference-data endpoint returns every list at once** (~0.92 MB) with no way to request one.
+19. **A second raw .NET exception leaks to the caller**: `"Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."` — the framework's own parse error, complete with its placeholder text, returned as an API error message. Same class of defect as #3, and now demonstrably not a one-off.
+20. **`cihaztamamlandi` refuses for at least two different reasons** — `Cihaz GPS Time Dolu Değil` and `Kontak Aktif Durumda` — and both are free Turkish prose with no code to branch on. A client that wants to tell "wait for a GPS fix" from "ask the driver to switch the ignition off" has to match on the sentence.
+21. **`Vendor Bilgisinde Hata. Lütfen Teknik Destek Ekibi ile Görüşünüz.`** is an instruction to a human ("contact the technical support team") returned where a machine-readable error belongs. It also means device records exist in production whose vendor data is broken.
 
 ---
 
@@ -181,11 +188,22 @@ document are worth reporting, because anyone following it hits them.
 
 ## Error catalog so far
 
+Every row is backed by a captured response. Nothing here is anticipated.
+
 | Legacy message | Exposed status | Code |
 |---|---|---|
 | `Token Bilgisi Eksik` | 401 | `MISSING_TOKEN` |
 | `Token Bilgisi Hatalı` | 401 | `INVALID_TOKEN` |
 | `Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz.` | 409 | `DEVICE_GPS_TIME_MISSING` |
+| `Kontak Aktif Durumda. Lütfen Kapatınız.` | 409 | `IGNITION_ACTIVE` |
 | `notsupported.commands.iotplatform.error` | 422 | `COMMAND_NOT_SUPPORTED` |
+| `Vendor Bilgisinde Hata. Lütfen Teknik Destek Ekibi ile Görüşünüz.` | 422 | `DEVICE_VENDOR_DATA_INVALID` |
 | `Input string was not in a correct format.` | 400 | `INVALID_FIELD_FORMAT` |
+| `Guid should contain 32 digits with 4 dashes (…).` | 400 | `INVALID_IDENTIFIER_FORMAT` |
 | *anything else* | 400 | `UNRECOGNISED_LEGACY_ERROR` (logged as a warning) |
+
+Why the two device refusals are 409 and the vendor fault is 422: a 409 says the request is
+correct and the world is not ready, so fixing the world and retrying will work — switch the
+ignition off, wait for a GPS fix. `Vendor Bilgisinde Hata` cannot be resolved by anyone in
+the request path; the legacy API says as much by telling the caller to phone support.
+Retrying it forever would be the natural reading of a 409, so it is not one.

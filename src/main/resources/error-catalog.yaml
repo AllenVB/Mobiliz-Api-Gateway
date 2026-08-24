@@ -26,15 +26,32 @@ errors:
     code: INVALID_TOKEN
     title: "The authentication token is not valid or has expired"
 
+  # The next two are the same family: the work order cannot be completed because the
+  # vehicle is not in the state the operation needs. 409 rather than 400, because the
+  # request is correct — it is the world that is not ready. Both arrive alongside a
+  # populated `result`, which is carried through as `payload` rather than dropped.
   - match: "Cihaz GPS Time Dolu Değil. Lütfen Kontrol Ediniz."
     status: 409
     code: DEVICE_GPS_TIME_MISSING
     title: "The device has not reported a GPS timestamp yet"
 
+  - match: "Kontak Aktif Durumda. Lütfen Kapatınız."
+    status: 409
+    code: IGNITION_ACTIVE
+    title: "The vehicle's ignition is on and must be switched off first"
+
   - match: "notsupported.commands.iotplatform.error"
     status: 422
     code: COMMAND_NOT_SUPPORTED
     title: "The IoT platform does not support this command for this device"
+
+  # Unprocessable rather than a conflict: unlike the two 409s above, nobody in the request
+  # path can put this right. The device's own vendor record is broken and the legacy API
+  # says so explicitly ("contact the technical support team"). Retrying will not help.
+  - match: "Vendor Bilgisinde Hata. Lütfen Teknik Destek Ekibi ile Görüşünüz."
+    status: 422
+    code: DEVICE_VENDOR_DATA_INVALID
+    title: "The device's vendor record is invalid and needs support to correct it"
 
   # A raw .NET exception, not a message meant for a caller. It surfaced when a numeric
   # code field was sent free text. Mapped to 400 because the caller can act on it, and
@@ -43,3 +60,12 @@ errors:
     status: 400
     code: INVALID_FIELD_FORMAT
     title: "A field was sent in a format the legacy service could not parse"
+
+  # Also a raw .NET exception, and the proof that every {detailId} the legacy API takes is
+  # a GUID: it surfaced when `0` was passed as a path identifier. Catalogued rather than
+  # pre-empted — rejecting a malformed identifier here, before the upstream call, needs a
+  # way to declare the format in the mapping YAML, which is recorded as B21 in open-items.
+  - match: "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."
+    status: 400
+    code: INVALID_IDENTIFIER_FORMAT
+    title: "An identifier in the request is not a valid GUID"

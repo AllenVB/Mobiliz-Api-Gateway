@@ -511,6 +511,71 @@ class BridgeEndToEndTest {
         }
 
         @Test
+        void shouldCarryThePayloadForTheOtherCompletionPreconditionToo() {
+            // The same endpoint refuses for more than one reason. Both refusals are 409 and
+            // both arrive with a populated result, so neither may lose its payload.
+            stubGet(
+                    "/yetkiliservis/cihaztamamlandi/abc",
+                    """
+                    {"success": false, "type": "ERROR",
+                     "message": "Kontak Aktif Durumda. Lütfen Kapatınız.",
+                     "result": {"durumu": false}}""");
+
+            ResponseEntity<JsonNode> response =
+                    callGet("/api/v1/work-order-lines/abc/completion-status");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            JsonNode problem = response.getBody();
+            assertThat(problem.get("code").asText()).isEqualTo("IGNITION_ACTIVE");
+            assertThat(problem.get("payload").get("completed").asBoolean()).isFalse();
+        }
+
+        @Test
+        void shouldSeparateAnUnfixableDeviceFaultFromAPrecondition() {
+            // "Contact the technical support team" means nobody in the request path can put
+            // this right, so it must not read as a 409 the caller could resolve and retry.
+            LEGACY.stubFor(
+                    put(urlPathEqualTo("/yetkiliservis/immobilizercheck/abc"))
+                            .willReturn(
+                                    aResponse()
+                                            .withStatus(201)
+                                            .withHeader("Content-Type", "application/json")
+                                            .withBody(
+                                                    failure(
+                                                            "Vendor Bilgisinde Hata. Lütfen Teknik"
+                                                                    + " Destek Ekibi ile"
+                                                                    + " Görüşünüz."))));
+
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/api/v1/work-order-lines/abc/immobilizer",
+                            """
+                            {"status": true}""",
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getBody().get("code").asText())
+                    .isEqualTo("DEVICE_VENDOR_DATA_INVALID");
+        }
+
+        @Test
+        void shouldCatalogueTheGuidExceptionRatherThanLeakItAsUnrecognised() {
+            // A .NET exception text, and the evidence that every {detailId} is a GUID.
+            stubGet(
+                    "/yetkiliservis/servistalepsatiri/abc",
+                    failure(
+                            "Guid should contain 32 digits with 4 dashes"
+                                    + " (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."));
+
+            ResponseEntity<JsonNode> response = callGet("/api/v1/work-order-lines/abc");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().get("code").asText())
+                    .isEqualTo("INVALID_IDENTIFIER_FORMAT");
+        }
+
+        @Test
         void shouldReportAnUnrecognisedLegacyErrorWithoutInventingAMeaning() {
             stubGet("/yetkiliservis/servistalepsatiri/abc", failure("Bilinmeyen bir hata olustu"));
 
