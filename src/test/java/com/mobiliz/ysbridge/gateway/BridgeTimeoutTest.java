@@ -71,7 +71,7 @@ class BridgeTimeoutTest {
 
         ResponseEntity<JsonNode> response =
                 http.exchange(
-                        "/api/v1/work-order-lines/abc",
+                        "/authorized-service/service-request-line/abc",
                         HttpMethod.GET,
                         new HttpEntity<>(null, headers),
                         JsonNode.class);

@@ -7,8 +7,8 @@
 #   their own other names, theirs is kept and the discrepancy is raised instead — see
 #   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
-#   legacy paths instead (/authorized-service/service-request-lines/). That is A22.
+#   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
+#   translated into English, with no version segment. A22 is closed.
 #
 # Reading the file: the key is always the legacy (Turkish) name, the value is the name
 # this bridge exposes. Long form adds `type`, `values`, `nested` or `emptyStringAsNull`.
@@ -44,7 +44,7 @@ resources:
   # as a path variable, so both work without a change here; A11 is what it means.
   work-order-list:
     method: GET
-    exposedPath: /api/v1/work-orders/{listFilter}
+    exposedPath: /authorized-service/service-requests/{listFilter}
     legacyPath: /yetkiliservis/servistalepleri/{listFilter}
 
   # --------------------------------------------------------------------------
@@ -52,7 +52,7 @@ resources:
   # --------------------------------------------------------------------------
   work-order-lines:
     method: GET
-    exposedPath: /api/v1/work-orders/{workOrderId}/lines
+    exposedPath: /authorized-service/service-request-lines/{workOrderId}
     legacyPath: /yetkiliservis/servistalepsatirlari/{workOrderId}
     response:
       unmapped: PASSTHROUGH_AND_REPORT
@@ -84,7 +84,7 @@ resources:
   # --------------------------------------------------------------------------
   work-order-line:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}
+    exposedPath: /authorized-service/service-request-line/{detailId}
     legacyPath: /yetkiliservis/servistalepsatiri/{detailId}
     response:
       unmapped: PASSTHROUGH_AND_REPORT
@@ -137,7 +137,7 @@ resources:
   # carries the literal `0` — so no write has ever executed. Tracked as A9 and A19.
   work-order-line-update:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}
+    exposedPath: /authorized-service/service-request-line/{detailId}
     legacyPath: /yetkiliservis/servistalepsatiri/{detailId}
     request:
       unmapped: FAIL
@@ -180,7 +180,7 @@ resources:
   # unchanged. Only a handful are actually renamed. That is the team's call.
   vehicle-status:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}/vehicle-status
+    exposedPath: /authorized-service/vehicle-last-status/{detailId}
     legacyPath: /yetkiliservis/aracsondurum/{detailId}
     response:
       unmapped: PASSTHROUGH_AND_REPORT
@@ -254,7 +254,7 @@ resources:
   # Raised as A32; the exposed path changes if the vocabulary turns out to be right.
   work-order-line-feedback:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/feedback
+    exposedPath: /authorized-service/feedback/{detailId}
     legacyPath: /yetkiliservis/geribildirim/{detailId}
     request:
       unmapped: FAIL
@@ -269,7 +269,7 @@ resources:
   # the captured `{"durumu": false}` is the same field with the failing value.
   work-order-line-completion-status:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}/completion-status
+    exposedPath: /authorized-service/device-completed/{detailId}
     legacyPath: /yetkiliservis/cihaztamamlandi/{detailId}
     response:
       unmapped: PASSTHROUGH_AND_REPORT
@@ -287,7 +287,7 @@ resources:
 
   work-order-line-demontage-completion:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/demontage-completion
+    exposedPath: /authorized-service/disassembly-completed/{detailId}
     legacyPath: /yetkiliservis/demontajtamamlandi/{detailId}
     request:
       unmapped: FAIL
@@ -297,7 +297,7 @@ resources:
 
   work-order-line-churn-completion:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/churn-completion
+    exposedPath: /authorized-service/churn-completed/{detailId}
     legacyPath: /yetkiliservis/churntamamlandi/{detailId}
     request:
       unmapped: FAIL
@@ -318,13 +318,13 @@ resources:
   #
   # The legacy API reads the camera channel from a `channel` header. A channel belongs
   # in the URL, so the bridge exposes it as a query parameter and moves it into the
-  # header on the way out: GET /api/v1/work-order-lines/{id}/dvr-status?channel=0
+  # header on the way out: GET /authorized-service/dvr-last-status/{id}?channel=0
   #
   # SECURITY: the returned URL embeds a Mobiliz-Token credential. It must be relayed to
   # the caller but never written to a log.
   work-order-line-dvr-status:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}/dvr-status
+    exposedPath: /authorized-service/dvr-last-status/{detailId}
     legacyPath: /yetkiliservis/DVRSonDurum/{detailId}
     legacyHeaders:
       channel:
@@ -336,10 +336,10 @@ resources:
   # --------------------------------------------------------------------------
   # The legacy API reads the search term from a `search` header, which is where a
   # search term least belongs. The bridge exposes it as a query parameter and moves it
-  # into the header on the way out: GET /api/v1/vehicles?serialNumber=...
+  # into the header on the way out: GET /authorized-service/chassis-inquiry?serialNumber=...
   vehicle-search:
     method: GET
-    exposedPath: /api/v1/vehicles
+    exposedPath: /authorized-service/chassis-inquiry
     legacyPath: /yetkiliservis/SaseSorgulama
     legacyHeaders:
       search:

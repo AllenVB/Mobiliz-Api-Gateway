@@ -1,5 +1,10 @@
 package com.mobiliz.ysbridge.error;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mobiliz.ysbridge.gateway.ExposedEnvelope;
 import com.mobiliz.ysbridge.gateway.exception.InvalidPageRequestException;
 import com.mobiliz.ysbridge.gateway.exception.MalformedRequestBodyException;
 import com.mobiliz.ysbridge.gateway.exception.MethodNotAllowedException;
@@ -19,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -28,16 +32,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
- * Turns every failure into an RFC 7807 problem document.
+ * Turns every failure into the same envelope a success comes back in.
  *
- * <p>Three rules shape what goes in one.
+ * <p>Three rules shape one.
  *
  * <ol>
- *   <li>The caller gets a stable {@code code} to branch on, never a message to parse.
- *   <li>Nothing is said twice. {@code detail} is omitted where it would only repeat {@code title},
- *       and the legacy {@code type} is carried only when it says something the status does not
- *       already say — on a failure it is always {@code "ERROR"}, which is exactly what a 4xx
- *       already means.
+ *   <li>The caller gets a stable {@code code} to branch on, never a message to parse. This is the
+ *       one thing the legacy API cannot do: its failures are Turkish free text.
+ *   <li>The HTTP status is truthful even though the envelope repeats the outcome. The legacy API
+ *       answers {@code 201 Created} to failures; a client should not have to open the body to learn
+ *       that something went wrong.
  *   <li>Nothing internal leaks. Stack traces and upstream bodies are logged, never returned.
  * </ol>
  */
@@ -46,161 +50,120 @@ public class BridgeExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BridgeExceptionHandler.class);
 
+    private static final JsonNodeFactory NODES = JsonNodeFactory.instance;
+
     /** The legacy {@code type} on every failure seen so far. Carrying it would add nothing. */
     private static final String UNINFORMATIVE_LEGACY_TYPE = "ERROR";
 
     // ------------------------------------------------------------------ routing
 
     @ExceptionHandler(NoSuchRouteException.class)
-    ProblemDetail handleNoSuchRoute(NoSuchRouteException e) {
-        return problem(
-                HttpStatus.NOT_FOUND, "No such endpoint", e.getMessage(), "NO_SUCH_ENDPOINT");
+    ResponseEntity<JsonNode> handleNoSuchRoute(NoSuchRouteException e) {
+        return failure(HttpStatus.NOT_FOUND, e.getMessage(), "NO_SUCH_ENDPOINT");
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    ProblemDetail handleNoResource(NoResourceFoundException e) {
-        return problem(
+    ResponseEntity<JsonNode> handleNoResource(NoResourceFoundException e) {
+        return failure(
                 HttpStatus.NOT_FOUND,
-                "No such endpoint",
                 "nothing is served at " + e.getResourcePath(),
                 "NO_SUCH_ENDPOINT");
     }
 
     @ExceptionHandler(MethodNotAllowedException.class)
-    ResponseEntity<ProblemDetail> handleMethodNotAllowed(MethodNotAllowedException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.METHOD_NOT_ALLOWED,
-                        "Method not allowed",
-                        e.getMessage(),
-                        "METHOD_NOT_ALLOWED");
-        problem.setProperty("allowed", e.allowed().stream().map(Object::toString).toList());
+    ResponseEntity<JsonNode> handleMethodNotAllowed(MethodNotAllowedException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "METHOD_NOT_ALLOWED");
+        ArrayNode allowed = body.putArray("allowed");
+        e.allowed().forEach(method -> allowed.add(method.toString()));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAllow(new LinkedHashSet<>(e.allowed()));
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(headers).body(problem);
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(headers).body(body);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    ProblemDetail handleUnsupportedMethod(HttpRequestMethodNotSupportedException e) {
-        return problem(
-                HttpStatus.METHOD_NOT_ALLOWED,
-                "Method not allowed",
-                e.getMessage(),
-                "METHOD_NOT_ALLOWED");
+    ResponseEntity<JsonNode> handleUnsupportedMethod(HttpRequestMethodNotSupportedException e) {
+        return failure(HttpStatus.METHOD_NOT_ALLOWED, e.getMessage(), "METHOD_NOT_ALLOWED");
     }
 
     // --------------------------------------------------------------- the caller
 
     @ExceptionHandler(MissingTokenException.class)
-    ResponseEntity<ProblemDetail> handleMissingToken(MissingTokenException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.UNAUTHORIZED,
-                        "Authentication required",
-                        e.getMessage(),
-                        "MISSING_TOKEN");
-
+    ResponseEntity<JsonNode> handleMissingToken(MissingTokenException e) {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers).body(problem);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .headers(headers)
+                .body(ExposedEnvelope.failure(e.getMessage(), "MISSING_TOKEN"));
     }
 
     @ExceptionHandler(MissingQueryParameterException.class)
-    ProblemDetail handleMissingParameter(MissingQueryParameterException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.BAD_REQUEST,
-                        "Missing query parameter",
-                        e.getMessage(),
-                        "MISSING_QUERY_PARAMETER");
-        problem.setProperty("parameter", e.parameter());
-        return problem;
+    ResponseEntity<JsonNode> handleMissingParameter(MissingQueryParameterException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "MISSING_QUERY_PARAMETER");
+        body.put("parameter", e.parameter());
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(InvalidPageRequestException.class)
-    ProblemDetail handleInvalidPageRequest(InvalidPageRequestException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.BAD_REQUEST,
-                        "Invalid paging parameter",
-                        e.getMessage(),
-                        "INVALID_PAGE_REQUEST");
-        problem.setProperty("parameter", e.parameter());
-        return problem;
+    ResponseEntity<JsonNode> handleInvalidPageRequest(InvalidPageRequestException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "INVALID_PAGE_REQUEST");
+        body.put("parameter", e.parameter());
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(MalformedRequestBodyException.class)
-    ProblemDetail handleMalformedBody(MalformedRequestBodyException e) {
-        return problem(
-                HttpStatus.BAD_REQUEST,
-                "Malformed request body",
-                e.getMessage(),
-                "MALFORMED_REQUEST_BODY");
+    ResponseEntity<JsonNode> handleMalformedBody(MalformedRequestBodyException e) {
+        return failure(HttpStatus.BAD_REQUEST, e.getMessage(), "MALFORMED_REQUEST_BODY");
     }
 
     @ExceptionHandler(UnsupportedMediaTypeException.class)
-    ProblemDetail handleUnsupportedMediaType(UnsupportedMediaTypeException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                        "Unsupported media type",
-                        e.getMessage(),
-                        "UNSUPPORTED_MEDIA_TYPE");
-        problem.setProperty("supplied", e.supplied());
-        return problem;
+    ResponseEntity<JsonNode> handleUnsupportedMediaType(UnsupportedMediaTypeException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "UNSUPPORTED_MEDIA_TYPE");
+        body.put("supplied", e.supplied());
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(body);
     }
 
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
-    ProblemDetail handleNotAcceptable(HttpMediaTypeNotAcceptableException e) {
-        return problem(
+    ResponseEntity<JsonNode> handleNotAcceptable(HttpMediaTypeNotAcceptableException e) {
+        return failure(
                 HttpStatus.NOT_ACCEPTABLE,
-                "Unsupported response format",
                 "this API answers with application/json only",
                 "NOT_ACCEPTABLE");
     }
 
     @ExceptionHandler(PayloadTooLargeException.class)
-    ProblemDetail handlePayloadTooLarge(PayloadTooLargeException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.PAYLOAD_TOO_LARGE,
-                        "Request body too large",
-                        e.getMessage(),
-                        "PAYLOAD_TOO_LARGE");
-        problem.setProperty("limitBytes", e.limitBytes());
-        return problem;
+    ResponseEntity<JsonNode> handlePayloadTooLarge(PayloadTooLargeException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "PAYLOAD_TOO_LARGE");
+        body.put("limitBytes", e.limitBytes());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
     @ExceptionHandler(UnmappedFieldException.class)
-    ProblemDetail handleUnmappedField(UnmappedFieldException e) {
-        ProblemDetail problem =
-                problem(
-                        HttpStatus.BAD_REQUEST,
-                        "Unrecognised field",
+    ResponseEntity<JsonNode> handleUnmappedField(UnmappedFieldException e) {
+        ObjectNode body =
+                ExposedEnvelope.failure(
                         "the field '%s' is not part of this endpoint's contract"
                                 .formatted(e.path()),
                         "UNRECOGNISED_FIELD");
-        problem.setProperty("field", e.path());
-        return problem;
+        body.put("field", e.path());
+        return ResponseEntity.badRequest().body(body);
     }
 
     // -------------------------------------------------------------- the upstream
 
     @ExceptionHandler(LegacyErrorException.class)
-    ResponseEntity<ProblemDetail> handleLegacyError(LegacyErrorException e) {
-        // No detail: it would only repeat the title, which is already the human-readable summary.
-        ProblemDetail problem = problem(HttpStatus.valueOf(e.status()), e.title(), null, e.code());
+    ResponseEntity<JsonNode> handleLegacyError(LegacyErrorException e) {
+        // A legacy failure can carry data worth keeping; see LegacyErrorException. It goes in
+        // `result`, the envelope's own slot for it, rather than a field invented alongside.
+        ObjectNode body = ExposedEnvelope.failure(e.title(), e.code(), e.payload());
 
         if (e.legacyMessage() != null && !e.legacyMessage().isBlank()) {
-            problem.setProperty("legacyMessage", e.legacyMessage());
+            body.put(ExposedEnvelope.LEGACY_MESSAGE, e.legacyMessage());
         }
         if (e.legacyType() != null && !UNINFORMATIVE_LEGACY_TYPE.equals(e.legacyType())) {
-            problem.setProperty("legacyType", e.legacyType());
-        }
-        if (e.payload() != null) {
-            // A legacy failure can carry data worth keeping; see LegacyErrorException.
-            problem.setProperty("payload", e.payload());
+            // The legacy `type` is dropped from the exposed envelope because it only ever
+            // duplicates `success`. If it ever says something else, it is not thrown away.
+            body.put("legacyType", e.legacyType());
         }
         if (!e.isRecognised()) {
             log.warn(
@@ -208,11 +171,11 @@ public class BridgeExceptionHandler {
                     e.legacyType(),
                     e.legacyMessage());
         }
-        return ResponseEntity.status(e.status()).body(problem);
+        return ResponseEntity.status(e.status()).body(body);
     }
 
     @ExceptionHandler(LegacyProtocolException.class)
-    ProblemDetail handleProtocolFailure(LegacyProtocolException e) {
+    ResponseEntity<JsonNode> handleProtocolFailure(LegacyProtocolException e) {
         if (e.kind() == LegacyProtocolException.Kind.CHALLENGE) {
             // Not the legacy application's fault: the request never reached it.
             log.error(
@@ -221,33 +184,24 @@ public class BridgeExceptionHandler {
         } else {
             log.error("the legacy API returned something unusable: {}", e.getMessage());
         }
-        return problem(
-                HttpStatus.BAD_GATEWAY,
-                "Unusable response from the legacy service",
-                e.getMessage(),
-                e.kind().code());
+        return failure(HttpStatus.BAD_GATEWAY, e.getMessage(), e.kind().code());
     }
 
     @ExceptionHandler(LegacyUnreachableException.class)
-    ProblemDetail handleUnreachable(LegacyUnreachableException e) {
+    ResponseEntity<JsonNode> handleUnreachable(LegacyUnreachableException e) {
         boolean timedOut = isTimeout(e);
         log.error("legacy API unreachable: {}", e.getMessage());
 
-        return problem(
+        return failure(
                 timedOut ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.BAD_GATEWAY,
-                timedOut ? "The legacy service timed out" : "The legacy service is unreachable",
                 e.getMessage(),
                 timedOut ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNREACHABLE");
     }
 
     @ExceptionHandler(TranslationException.class)
-    ProblemDetail handleTranslationFailure(TranslationException e) {
+    ResponseEntity<JsonNode> handleTranslationFailure(TranslationException e) {
         log.error("translation failed, the mapping and the payload disagree: {}", e.getMessage());
-        return problem(
-                HttpStatus.BAD_GATEWAY,
-                "The legacy payload did not fit its mapping",
-                e.getMessage(),
-                "MAPPING_MISMATCH");
+        return failure(HttpStatus.BAD_GATEWAY, e.getMessage(), "MAPPING_MISMATCH");
     }
 
     // ------------------------------------------------------------- last resort
@@ -260,11 +214,10 @@ public class BridgeExceptionHandler {
      * internals. The cause is logged in full; the caller is told only that something failed.
      */
     @ExceptionHandler(Exception.class)
-    ProblemDetail handleUnexpected(Exception e) {
+    ResponseEntity<JsonNode> handleUnexpected(Exception e) {
         log.error("unhandled exception while serving a request", e);
-        return problem(
+        return failure(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "Internal error",
                 "the request could not be completed",
                 "INTERNAL_ERROR");
     }
@@ -278,18 +231,8 @@ public class BridgeExceptionHandler {
         return false;
     }
 
-    /**
-     * @param detail may be {@code null}, in which case the field is omitted rather than repeating
-     *     the title
-     */
-    private static ProblemDetail problem(
-            HttpStatus status, String title, String detail, String code) {
-        ProblemDetail problem = ProblemDetail.forStatus(status);
-        problem.setTitle(title);
-        if (detail != null && !detail.equals(title)) {
-            problem.setDetail(detail);
-        }
-        problem.setProperty("code", code);
-        return problem;
+    private static ResponseEntity<JsonNode> failure(
+            HttpStatus status, String message, String code) {
+        return ResponseEntity.status(status).body(ExposedEnvelope.failure(message, code));
     }
 }

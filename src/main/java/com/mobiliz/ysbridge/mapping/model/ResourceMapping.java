@@ -11,7 +11,7 @@ import org.springframework.http.HttpMethod;
  *
  * @param name identifier used in logs, metrics and the mapping file
  * @param method HTTP method, identical on both sides
- * @param exposedPath URI template this bridge serves, e.g. {@code /api/v1/auth/login}
+ * @param exposedPath URI template this bridge serves, e.g. {@code /authorized-service/login}
  * @param legacyPath URI template on the legacy API, e.g. {@code /yetkiliservis/giris}
  * @param request mapping for the outbound request body, or {@code null} when there is none
  * @param response mapping for the inbound response payload, or {@code null}

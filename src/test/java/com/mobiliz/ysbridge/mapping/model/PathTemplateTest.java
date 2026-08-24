@@ -9,7 +9,9 @@ class PathTemplateTest {
 
     @Test
     void shouldExtractVariableNamesInDeclarationOrder() {
-        assertThat(PathTemplate.variableNames("/api/v1/work-orders/{workOrderId}/lines/{lineId}"))
+        assertThat(
+                        PathTemplate.variableNames(
+                                "/authorized-service/service-request-lines/{workOrderId}/{lineId}"))
                 .containsExactly("workOrderId", "lineId");
     }
 

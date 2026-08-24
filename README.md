@@ -3,9 +3,12 @@
 An API gateway in front of the legacy **Yetkili Servis** API.
 
 The legacy API works, but its contract is hard to consume: field names are Turkish and
-inconsistent, every response is wrapped in an envelope, and its HTTP status carries no
-information — reads and errors alike answer `201 Created`. This service sits in front of
-it and presents a clean, English, resource-oriented API instead.
+inconsistent, its paths are Turkish, and its HTTP status carries no information — reads
+and errors alike answer `201 Created`. This service sits in front of it and presents the
+same operations in English, with statuses that mean what they say.
+
+The response envelope — `{success, message, result}` — **stays**, because the consuming
+system expects it. This bridge corrects what is inside it rather than replacing it.
 
 Its defining property: **the translation lives in configuration, not in code.** Adding an
 endpoint or renaming a field is an edit to a YAML document. There is no per-endpoint Java
@@ -24,7 +27,7 @@ the service refuses to start rather than accepting traffic it cannot serve.
 
 | Endpoint | Purpose |
 |---|---|
-| `/api/v1/**` | the exposed API |
+| `/authorized-service/**` | the exposed API |
 | `/actuator/health` | liveness |
 | `/internal/mapping/coverage` | fields the mappings did not cover — see below |
 
@@ -41,7 +44,24 @@ at `build/reports/jacoco/test/html/index.html`.
 
 ## Using the API
 
-Authenticate with the token `POST /api/v1/auth/login` returns:
+Every response, success or failure, carries the envelope:
+
+```json
+{ "success": true, "message": null, "result": { ... } }
+```
+
+`type` is not part of it. It only ever held `"SUCCESS"` or `"ERROR"` — the same fact
+`success` already carries as a boolean — so it is dropped rather than said twice. If it
+ever holds something else, that is logged and surfaced as `legacyType` rather than lost.
+
+**The HTTP status is truthful**, which is the one thing the legacy API never does: `200`,
+`401`, `409`, `422` and so on, instead of `201` for everything including failures. The
+status and the envelope agree; a caller may read either.
+
+There is no `204`. A 204 may carry no body, and the envelope is unconditional, so an
+operation with nothing to return answers `200` with `"result": null`.
+
+Authenticate with the token `POST /authorized-service/login` returns:
 
 ```
 Authorization: Bearer <token>
@@ -56,16 +76,20 @@ load.
 
 ### Collections
 
-Every collection is an object, never a bare array, and always paged:
+A collection is an object inside `result`, never a bare array, and always paged:
 
 ```
-GET /api/v1/vehicles?serialNumber=211&page=0&size=50
+GET /authorized-service/chassis-inquiry?serialNumber=211&page=0&size=50
 ```
 
 ```json
 {
-  "items": [ ... ],
-  "page": { "number": 0, "size": 50, "totalElements": 27, "totalPages": 1 }
+  "success": true,
+  "message": null,
+  "result": {
+    "items": [ ... ],
+    "page": { "number": 0, "size": 50, "totalElements": 27, "totalPages": 1 }
+  }
 }
 ```
 
@@ -86,36 +110,39 @@ grow without breaking anyone.
 page counts, warnings, deprecation notices could never be added later. One level of
 nesting, once, buys the ability to add fields forever.
 
-**Anything that may gain an attribute is an object, not a scalar.** The legacy API returns
-opaque lookup codes — `"marka": "03c851be-…"`, `"yakitTuru": "1"`. These surface as
-`brand.id` and `fuelType.code`, not `brandId` and `fuelTypeCode`. When the reference-data
-endpoint is used to resolve them, the label arrives as `brand.name`: a **new field**, not a
-changed one. A flat string would have had to become an object, breaking every caller.
-
-The same rule turned two flat fields into one object where the legacy API already had a
-pair: `rol` + `rolAciklama` are `role.code` + `role.description`.
-
-That rule currently applies to responses only. The team's agreed **request** vocabulary is
-flat — `komut` + `komutid` are `command` + `commandId`, not `command.name` + `command.code`
-— and the agreed name wins over this project's preference. The split is deliberate but not
-permanent: which style the whole contract settles on is decided when the response
-vocabulary arrives (E15 and A20 in `docs/open-items.md`).
-
 **Nothing is said twice.** The legacy envelope carried both `success: true` and
-`type: "SUCCESS"` — the same fact under two names. That redundancy is gone with the
-envelope, and the same discipline applies to what this service emits: an error's `detail`
-is omitted where it would only repeat `title`; the legacy `type` is carried only when it
-says something the status does not; and the page metadata leaves out `first`, `last` and
-`hasNext`, each of which is one comparison away from `number` and `totalPages`.
-`totalPages` stays, because a ceiling division with a zero-element edge case is worth
-doing once here instead of wrongly in every client.
+`type: "SUCCESS"` — the same fact under two names — so `type` is dropped. The same
+discipline applies elsewhere: the page metadata leaves out `first`, `last` and `hasNext`,
+each of which is one comparison away from `number` and `totalPages`. `totalPages` stays,
+because a ceiling division with a zero-element edge case is worth doing once here instead
+of wrongly in every client.
+
+**The team's vocabulary wins over this project's preferences.** This bridge had exposed
+opaque lookup codes as objects — `brand.id`, `fuelType.code`, `role.code` +
+`role.description` — so that resolving one later would add a field rather than change one,
+which is the difference between a safe change and a breaking one. The agreed vocabulary is
+flat throughout, and the agreed names are what ships. The cost is recorded once in E15 of
+`docs/open-items.md` and is not re-argued per field: when a label is later wanted next to
+`fuelType: "1"`, that scalar has to become an object and every caller breaks. Worth
+raising once; not worth overriding the team on.
 
 ---
 
 ## Errors
 
-Every failure is an RFC 7807 problem document carrying a stable `code` to branch on —
-never a message to parse.
+A failure carries the same envelope as a success, plus a stable `code` to branch on —
+never a message to parse:
+
+```json
+{ "success": false,
+  "message": "The vehicle's ignition is on and must be switched off first",
+  "code": "IGNITION_ACTIVE",
+  "legacyMessage": "Kontak Aktif Durumda. Lütfen Kapatınız.",
+  "result": null }
+```
+
+`message` is the English translation; the untranslated original travels alongside as
+`legacyMessage` so support can still trace it against the legacy service's own logs.
 
 | Situation | Status | `code` |
 |---|---|---|
@@ -138,8 +165,8 @@ never a message to parse.
 | Anything unforeseen | 500 | `INTERNAL_ERROR` (stack trace logged, never returned) |
 
 A legacy failure that carries data keeps it: `cihaztamamlandi` answers `success: false`
-alongside `{"durumu": false}`, which arrives as a translated `payload` on the problem
-document rather than being dropped.
+alongside `{"durumu": false}`, which arrives translated in `result` — the envelope's own
+slot for it — rather than being dropped.
 
 Legacy error messages are matched **exactly**, never fuzzily. Guessing which error a
 half-matching message means is how a gateway starts lying about what happened upstream.
@@ -158,7 +185,7 @@ Everything below happens in `src/main/resources/mapping/*.yaml`. No Java changes
 resources:
   work-order-line:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}
+    exposedPath: /authorized-service/service-request-line/{detailId}
     legacyPath: /yetkiliservis/servistalepsatiri/{detailId}
     authentication: TOKEN     # the default; use NONE only for the auth endpoints
 ```
@@ -176,9 +203,10 @@ removes a whole class of mistakes.
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        adSoyad: fullName                       # short form: a plain rename
+        adSoyad: fullname                       # short form: a plain rename
         androidversion: appVersions.android     # a dot groups it into a nested object
-        marka: brand.id                         # an opaque reference: object, not scalar
+        marka: brand.id                         # nesting is supported, though the agreed
+                                                # vocabulary does not currently use it
         durum:                                  # long form: extra rules
           exposed: status
           values:
@@ -280,7 +308,7 @@ src/main/java/com/mobiliz/ysbridge/
 │   └── engine/     JsonTranslator — the translation itself
 ├── legacy/         calling the legacy API and interpreting its envelope
 ├── gateway/        routing, paging, and the single catch-all controller
-├── error/          error catalog and RFC 7807 problem details
+├── error/          error catalog and the failure envelope
 └── observability/  correlation id, mapping coverage
 
 src/main/resources/
@@ -301,13 +329,16 @@ src/main/resources/
 
 ## Status
 
-**Request** field names come from the team's agreed vocabulary and are settled.
+**Names and paths are settled.** Every field name and every path comes from the team's
+English vocabulary, applied exactly as published — inconsistencies included, because
+inventing a name they did not write would be worse than carrying one of theirs. The
+discrepancies are raised in `docs/open-items.md` (A25, A26, A29, A30) rather than fixed in
+place.
 
-**Response** field names are still this project's proposals: the document that arrived
-covers request bodies only, leaving roughly 110 response fields unnamed. So are the paths —
-the document translates the legacy ones instead, and which style to adopt is an open
-decision (A20–A22 in `docs/open-items.md`).
+**Two endpoints are deliberately incomplete.** The work order list has agreed English names
+but no captured legacy response, so the pairing between the two is unknown and the mapping
+is left empty rather than guessed (A28). Five more endpoints have never returned a
+successful response to anyone, including the vocabulary's own author (A17).
 
-Applying the agreed request names touched 25 lines of YAML and two test classes. Every
-coverage and round-trip test passed without modification, which is what the rename-safety
-guarantee is for.
+Applying the whole vocabulary changed **no Java source at all** — only YAML documents and
+test fixtures. That is the rename-safety guarantee doing its job.

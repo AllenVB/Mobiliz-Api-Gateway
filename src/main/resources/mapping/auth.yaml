@@ -15,8 +15,8 @@
 #   English vocabulary as published in Notion on 2026-08-24, applied exactly as written.
 #   The other mapping files still carry proposals for their response fields.
 #
-#   PATHS remain the resource-oriented ones chosen here. The vocabulary translates the
-#   legacy paths instead (/authorized-service/login); which style to adopt is A22.
+#   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
+#   translated into English, with no version segment. A22 is closed.
 #
 # Two open questions were raised with the team against this file (A25, A26 in
 # docs/open-items.md): `username` here contradicts `userName` in the earlier PDF, and
@@ -27,7 +27,7 @@ resources:
 
   auth-login:
     method: POST
-    exposedPath: /api/v1/auth/login
+    exposedPath: /authorized-service/login
     legacyPath: /yetkiliservis/giris
     # This is how a caller obtains a token, so it cannot require one.
     authentication: NONE
@@ -78,7 +78,7 @@ resources:
 
   auth-password-reset-request:
     method: POST
-    exposedPath: /api/v1/auth/password-reset-requests
+    exposedPath: /authorized-service/forgot-password
     legacyPath: /yetkiliservis/sifremiunuttum
     authentication: NONE
 

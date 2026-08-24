@@ -105,7 +105,7 @@ class AuthMappingTest {
         assertThat(catalog.byName("auth-password-reset-request"))
                 .get()
                 .extracting(ResourceMapping::exposedPath)
-                .isEqualTo("/api/v1/auth/password-reset-requests");
+                .isEqualTo("/authorized-service/forgot-password");
     }
 
     @Nested

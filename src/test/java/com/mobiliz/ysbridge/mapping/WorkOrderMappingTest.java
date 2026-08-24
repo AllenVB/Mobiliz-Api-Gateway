@@ -181,7 +181,8 @@ class WorkOrderMappingTest {
                             r -> {
                                 assertThat(r.method()).isEqualTo(HttpMethod.GET);
                                 assertThat(r.exposedPath())
-                                        .isEqualTo("/api/v1/work-order-lines/{detailId}");
+                                        .isEqualTo(
+                                                "/authorized-service/service-request-line/{detailId}");
                             });
             assertThat(catalog.byName("work-order-line-update"))
                     .get()
@@ -189,7 +190,8 @@ class WorkOrderMappingTest {
                             r -> {
                                 assertThat(r.method()).isEqualTo(HttpMethod.PUT);
                                 assertThat(r.exposedPath())
-                                        .isEqualTo("/api/v1/work-order-lines/{detailId}");
+                                        .isEqualTo(
+                                                "/authorized-service/service-request-line/{detailId}");
                             });
         }
 

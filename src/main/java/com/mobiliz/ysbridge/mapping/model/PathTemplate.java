@@ -3,7 +3,10 @@ package com.mobiliz.ysbridge.mapping.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Helpers for URI templates of the form {@code /api/v1/work-orders/{workOrderId}/lines}. */
+/**
+ * Helpers for URI templates of the form {@code
+ * /authorized-service/service-request-lines/{workOrderId}}.
+ */
 public final class PathTemplate {
 
     private PathTemplate() {}

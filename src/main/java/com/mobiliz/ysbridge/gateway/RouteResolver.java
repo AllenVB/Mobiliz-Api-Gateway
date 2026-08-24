@@ -16,8 +16,9 @@ import org.springframework.web.util.pattern.PathPatternParser;
  * Matches an incoming request against the exposed routes of the mapping catalog.
  *
  * <p>Patterns are compiled once at startup and ordered most-specific-first, so a literal segment
- * always wins over a variable one. Without that ordering, {@code /api/v1/work-orders/{listFilter}}
- * could swallow a request meant for a more specific sibling.
+ * always wins over a variable one. Without that ordering, {@code
+ * /authorized-service/service-requests/{listFilter}} could swallow a request meant for a more
+ * specific sibling.
  */
 public class RouteResolver {
 
@@ -36,7 +37,7 @@ public class RouteResolver {
 
     /**
      * @param method method of the incoming request
-     * @param path path of the incoming request, e.g. {@code /api/v1/auth/login}
+     * @param path path of the incoming request, e.g. {@code /authorized-service/login}
      * @return the matching resource and the path variables extracted from it
      */
     public Optional<RouteMatch> resolve(HttpMethod method, String path) {

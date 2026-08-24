@@ -30,7 +30,7 @@ class MappingYamlLoaderTest {
                 resources:
                   auth-login:
                     method: POST
-                    exposedPath: /api/v1/auth/login
+                    exposedPath: /authorized-service/login
                     legacyPath: /yetkiliservis/giris
                     request:
                       unmapped: FAIL
@@ -62,7 +62,7 @@ class MappingYamlLoaderTest {
 
             assertThat(resource.name()).isEqualTo("auth-login");
             assertThat(resource.method()).isEqualTo(HttpMethod.POST);
-            assertThat(resource.exposedPath()).isEqualTo("/api/v1/auth/login");
+            assertThat(resource.exposedPath()).isEqualTo("/authorized-service/login");
             assertThat(resource.legacyPath()).isEqualTo("/yetkiliservis/giris");
         }
 
@@ -191,7 +191,7 @@ class MappingYamlLoaderTest {
                                             resources:
                                               auth-login:
                                                 method: POST
-                                                exposedPath: /api/v1/auth/login
+                                                exposedPath: /authorized-service/login
                                                 legacyPath: /yetkiliservis/giris
                                                 responce:
                                                   fields:

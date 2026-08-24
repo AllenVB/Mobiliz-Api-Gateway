@@ -18,7 +18,8 @@ class MappingCatalogTest {
         MappingCatalog catalog =
                 new MappingCatalog(
                         List.of(
-                                resource("auth-login", HttpMethod.POST, "/api/v1/auth/login"),
+                                resource(
+                                        "auth-login", HttpMethod.POST, "/authorized-service/login"),
                                 resource("service-detail", HttpMethod.GET, "/api/v1/services")));
 
         assertThat(catalog.size()).isEqualTo(2);

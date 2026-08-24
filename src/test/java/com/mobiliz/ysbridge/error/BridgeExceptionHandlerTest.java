@@ -2,9 +2,10 @@ package com.mobiliz.ysbridge.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 
 /**
  * The last-resort handler, tested directly because it exists for situations no test can arrange on
@@ -18,12 +19,23 @@ class BridgeExceptionHandlerTest {
 
     private final BridgeExceptionHandler handler = new BridgeExceptionHandler();
 
+    /** Everything the caller could read, concatenated — nothing may be missed by looking at one. */
+    private static String everythingTheCallerSees(ResponseEntity<JsonNode> response) {
+        return String.valueOf(response.getBody());
+    }
+
     @Test
     void shouldAnswer500ForAnythingUnforeseen() {
-        ProblemDetail problem = handler.handleUnexpected(new IllegalStateException("boom"));
+        ResponseEntity<JsonNode> response =
+                handler.handleUnexpected(new IllegalStateException("boom"));
 
-        assertThat(problem.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        assertThat(problem.getProperties()).containsEntry("code", "INTERNAL_ERROR");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        JsonNode body = response.getBody();
+        assertThat(body.get("success").asBoolean())
+                .as("the envelope must report the failure as well as the status")
+                .isFalse();
+        assertThat(body.get("code").asText()).isEqualTo("INTERNAL_ERROR");
+        assertThat(body.get("result").isNull()).isTrue();
     }
 
     @Test
@@ -32,14 +44,11 @@ class BridgeExceptionHandlerTest {
                 new RuntimeException(
                         "connection to jdbc:postgresql://internal-db:5432 failed for user svc_admin");
 
-        ProblemDetail problem = handler.handleUnexpected(withSecrets);
-
-        assertThat(problem.getDetail())
+        assertThat(everythingTheCallerSees(handler.handleUnexpected(withSecrets)))
                 .as("an unhandled exception must not become a disclosure")
                 .doesNotContain("jdbc")
                 .doesNotContain("internal-db")
                 .doesNotContain("svc_admin");
-        assertThat(problem.getTitle()).doesNotContain("svc_admin");
     }
 
     @Test
@@ -48,9 +57,7 @@ class BridgeExceptionHandlerTest {
                 new IllegalStateException(
                         "outer", new IllegalArgumentException("token=SECRET-VALUE-0001"));
 
-        ProblemDetail problem = handler.handleUnexpected(nested);
-
-        assertThat(String.valueOf(problem.getDetail()) + problem.getTitle())
+        assertThat(everythingTheCallerSees(handler.handleUnexpected(nested)))
                 .doesNotContain("SECRET-VALUE-0001");
     }
 }

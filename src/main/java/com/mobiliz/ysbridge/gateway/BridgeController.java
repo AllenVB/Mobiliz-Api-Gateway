@@ -102,7 +102,7 @@ public class BridgeController {
                                 Integer.MAX_VALUE - 1);
     }
 
-    @RequestMapping("/api/v1/**")
+    @RequestMapping("/authorized-service/**")
     public ResponseEntity<JsonNode> handle(HttpServletRequest request)
             throws HttpMediaTypeNotAcceptableException {
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
@@ -142,15 +142,17 @@ public class BridgeController {
         if (!envelope.success()) {
             throw toExposedError(envelope, resource);
         }
+        // 200 with a null result rather than 204: the envelope is part of the contract, and a
+        // 204 may carry no body. See ExposedEnvelope.
         if (envelope.isEmptySuccess()) {
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.ok(ExposedEnvelope.success(null));
         }
 
         JsonNode result = envelope.result();
         if (result.isArray()) {
-            return ResponseEntity.ok(page(result, resource, pageRequest));
+            return ResponseEntity.ok(ExposedEnvelope.success(page(result, resource, pageRequest)));
         }
-        return ResponseEntity.ok(translateResult(result, resource));
+        return ResponseEntity.ok(ExposedEnvelope.success(translateResult(result, resource)));
     }
 
     // ------------------------------------------------------------------ routing

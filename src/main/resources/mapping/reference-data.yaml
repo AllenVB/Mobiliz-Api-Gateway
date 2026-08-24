@@ -7,8 +7,8 @@
 #   their own other names, theirs is kept and the discrepancy is raised instead — see
 #   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
-#   legacy paths instead (/authorized-service/...). That is A22.
+#   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
+#   translated into English, with no version segment. A22 is closed.
 #
 #   Still not covered by the vocabulary: the send-status-command body (A16).
 
@@ -40,7 +40,7 @@ resources:
   # one, so it is mapped once here.
   dropdown-list:
     method: GET
-    exposedPath: /api/v1/reference-data
+    exposedPath: /authorized-service/combos
     legacyPath: /yetkiliservis/combolar
     response:
       unmapped: PASSTHROUGH_AND_REPORT

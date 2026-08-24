@@ -7,8 +7,8 @@
 #   their own other names, theirs is kept and the discrepancy is raised instead — see
 #   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
-#   legacy paths instead (/authorized-service/...). That is A22.
+#   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
+#   translated into English, with no version segment. A22 is closed.
 #
 #   Still not covered by the vocabulary: the send-status-command body (A16).
 
@@ -31,7 +31,7 @@ resources:
   # whoever the token belongs to. The exposed path says so explicitly.
   user-consents-update:
     method: PUT
-    exposedPath: /api/v1/users/me/consents
+    exposedPath: /authorized-service/user
     legacyPath: /yetkiliservis/kullanici
     request:
       unmapped: FAIL

@@ -7,8 +7,8 @@
 #   their own other names, theirs is kept and the discrepancy is raised instead — see
 #   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
-#   legacy paths instead (/authorized-service/...). That is A22.
+#   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
+#   translated into English, with no version segment. A22 is closed.
 #
 #   Still not covered by the vocabulary: the send-status-command body (A16).
 
@@ -24,7 +24,7 @@ resources:
   # in two places — so the glossary must never override an explicit per-resource mapping.
   immobilizer-status:
     method: GET
-    exposedPath: /api/v1/work-order-lines/{detailId}/immobilizer
+    exposedPath: /authorized-service/immobilizer-check/{detailId}
     legacyPath: /yetkiliservis/immobilizercheck/{detailId}
     response:
       unmapped: PASSTHROUGH_AND_REPORT
@@ -33,7 +33,7 @@ resources:
 
   immobilizer-update:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/immobilizer
+    exposedPath: /authorized-service/immobilizer-check/{detailId}
     legacyPath: /yetkiliservis/immobilizercheck/{detailId}
     request:
       unmapped: FAIL
@@ -62,7 +62,7 @@ resources:
   # The codes are numeric strings; the labels are free text ("siren", "on").
   send-car-command:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/car-command
+    exposedPath: /authorized-service/send-car-command/{detailId}
     legacyPath: /yetkiliservis/sendcarcommand/{detailId}
     request:
       unmapped: FAIL
@@ -90,5 +90,5 @@ resources:
   # true, and it is tracked in docs/open-items.md.
   send-status-command:
     method: PUT
-    exposedPath: /api/v1/work-order-lines/{detailId}/status-command
+    exposedPath: /authorized-service/send-status-command/{detailId}
     legacyPath: /yetkiliservis/sendstatuscommand/{detailId}

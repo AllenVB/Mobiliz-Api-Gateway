@@ -17,7 +17,7 @@ class ResourceMappingTest {
     void shouldAcceptTemplatesDeclaringTheSameVariables() {
         ResourceMapping mapping =
                 resource(
-                        "/api/v1/work-orders/{workOrderId}/lines",
+                        "/authorized-service/service-request-lines/{workOrderId}",
                         "/yetkiliservis/servistalepsatirlari/{workOrderId}");
 
         assertThat(mapping.pathVariables()).containsExactly("workOrderId");
@@ -29,7 +29,7 @@ class ResourceMappingTest {
                 .isThrownBy(
                         () ->
                                 resource(
-                                        "/api/v1/work-orders/{workOrderId}/lines",
+                                        "/authorized-service/service-request-lines/{workOrderId}",
                                         "/yetkiliservis/servistalepsatirlari/{detayId}"))
                 .withMessageContaining("path variables differ");
     }

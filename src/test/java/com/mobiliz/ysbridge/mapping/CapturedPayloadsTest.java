@@ -140,13 +140,13 @@ class CapturedPayloadsTest {
         }
 
         @Test
-        void shouldExposeEveryResourceUnderTheVersionedApiPrefix() {
+        void shouldExposeEveryResourceUnderTheAuthorizedServicePrefix() {
             assertThat(catalog.resources())
                     .allSatisfy(
                             r ->
                                     assertThat(r.exposedPath())
                                             .as("resource %s", r.name())
-                                            .startsWith("/api/v1/"));
+                                            .startsWith("/authorized-service/"));
         }
 
         @Test
