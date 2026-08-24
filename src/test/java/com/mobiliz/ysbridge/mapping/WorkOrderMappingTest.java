@@ -190,6 +190,61 @@ class WorkOrderMappingTest {
             """;
 
     @Nested
+    class ChurnCompletion {
+
+        /** The captured churn body. Its last key carries a Turkish letter. */
+        private static final String CHURN_REQUEST =
+                """
+                { "teslimdurumu": "1",
+                  "contactname": "Ahmet Yilmaz",
+                  "rakipurun": "XYZ Takip Sistemi",
+                  "diğer": "XYZ Takip Sistemi" }
+                """;
+
+        @Test
+        void shouldTranslateTheWholeChurnBody() {
+            Gaps gaps =
+                    translateAndCollectGaps(
+                            json(CHURN_REQUEST),
+                            requestOf("work-order-line-churn-completion"),
+                            Direction.TO_ENGLISH);
+
+            assertThat(gaps.unmapped).isEmpty();
+            assertThat(gaps.output.get("deliveryStatus").asText()).isEqualTo("1");
+            assertThat(gaps.output.get("competitorProduct").asText())
+                    .isEqualTo("XYZ Takip Sistemi");
+            assertThat(gaps.output.get("other").asText()).isEqualTo("XYZ Takip Sistemi");
+        }
+
+        @Test
+        void shouldCarryTheTurkishKeyThroughToTheLegacyApiIntact() {
+            // The single most fragile thing in the whole mapping: `diğer` is the only
+            // legacy key that is not ASCII. If the file encoding is mangled anywhere
+            // between the editor, the build and the classpath, it becomes `di?er` — and
+            // the legacy API would silently ignore the field rather than complain.
+            // Nothing else in the suite would notice, so this asserts it directly.
+            JsonNode exposed =
+                    translator.translate(
+                            json(CHURN_REQUEST),
+                            requestOf("work-order-line-churn-completion"),
+                            Direction.TO_ENGLISH,
+                            TranslationObserver.noop());
+
+            JsonNode backToLegacy =
+                    translator.translate(
+                            exposed,
+                            requestOf("work-order-line-churn-completion"),
+                            Direction.TO_LEGACY,
+                            TranslationObserver.noop());
+
+            assertThat(backToLegacy.has("diğer"))
+                    .as("the Turkish key must survive the round trip byte for byte")
+                    .isTrue();
+            assertThat(backToLegacy).isEqualTo(json(CHURN_REQUEST));
+        }
+    }
+
+    @Nested
     class WorkOrderList {
 
         @Test
