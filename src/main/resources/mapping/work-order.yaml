@@ -38,9 +38,10 @@ resources:
   # Pairing them by guesswork would produce a mapping that looks complete and silently
   # renames the wrong fields. Tracked as A28.
   #
-  # Note also that the vocabulary documents this path as `/service-requests/1`, while
-  # every capture used `/servistalepleri/0`. The trailing segment is modelled as a path
-  # variable, so both work without a change here.
+  # The vocabulary pairs this with `/yetkiliservis/servistalepleri/**1**`, while every
+  # capture used `**0**` — and `0` is the one that hangs for 125 seconds. Whoever wrote
+  # the vocabulary evidently got a response out of `1`. The trailing segment is modelled
+  # as a path variable, so both work without a change here; A11 is what it means.
   work-order-list:
     method: GET
     exposedPath: /api/v1/work-orders/{listFilter}
@@ -122,16 +123,18 @@ resources:
 
   # UNCONFIRMED TARGET — read this before relying on it.
   #
-  # The vocabulary documents this operation as PUT /authorized-service/service-requests/0,
-  # i.e. against the *service requests* route. That is the same mistake the Hoppscotch
-  # collection makes: PUT /yetkiliservis/servistalepleri/0 answers 405 with `Allow: GET`,
-  # so that route is read-only and the operation cannot ever have worked there.
+  # An earlier draft of the vocabulary documented this operation as
+  # PUT /authorized-service/service-requests/0 — the same mistake the Hoppscotch
+  # collection makes, since PUT /yetkiliservis/servistalepleri/0 answers 405 with
+  # `Allow: GET`. **The completed vocabulary drops the operation entirely**: it is the
+  # only write in the collection with no entry at all. That is either a deliberate
+  # removal once the route was found to be read-only, or an omission. Tracked as A33.
   #
-  # The body is field-for-field the response of servistalepsatiri/{detayId}, and this API
-  # already serves GET and PUT from one path elsewhere (immobilizercheck, servisdetay),
-  # so that is the assumed target and what is configured below. Still unverified against
-  # the real API: the 2026-08-24 attempt was rejected for a malformed identifier, because
-  # the saved request also carries the literal `0`. Tracked as A9 and A19.
+  # The endpoint is kept here rather than deleted, because the API does accept writes at
+  # servistalepsatiri/{detayId} and the body is field-for-field that resource's response.
+  # Deleting it would lose the work; keeping it flagged does not pretend it is verified.
+  # The 2026-08-24 attempt was rejected for a malformed identifier — the saved request
+  # carries the literal `0` — so no write has ever executed. Tracked as A9 and A19.
   work-order-line-update:
     method: PUT
     exposedPath: /api/v1/work-order-lines/{detailId}
@@ -242,6 +245,13 @@ resources:
   # A18 is closed by the vocabulary: it documents `"feedbackReason": 6`, a number. The
   # captured failure — "Input string was not in a correct format." — was the free-text
   # value in the older document being rejected. The code list itself is still unknown.
+  #
+  # WHAT DOES THE IDENTIFIER SELECT? The collection calls it `detayId` — a work order
+  # *line*. The vocabulary calls it `{requsetId}` / `{talepID}` — a work order. Feedback
+  # therefore hangs off a line in one source and off the whole request in the other, and
+  # that is a modelling difference, not a spelling one. Left as a line, matching the
+  # collection, because that is the source that was actually executed against the API.
+  # Raised as A32; the exposed path changes if the vocabulary turns out to be right.
   work-order-line-feedback:
     method: PUT
     exposedPath: /api/v1/work-order-lines/{detailId}/feedback

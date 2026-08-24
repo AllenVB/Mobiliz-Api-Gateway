@@ -10,8 +10,7 @@
 #   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
 #   legacy paths instead (/authorized-service/...). That is A22.
 #
-#   Still not covered by the vocabulary: the send-status-command body (A16) and the
-#   user-consents update (its section had not been published when this was applied).
+#   Still not covered by the vocabulary: the send-status-command body (A16).
 
 resources:
 
@@ -22,9 +21,11 @@ resources:
   # login returns YSKVKK / YSETK / SatisKVKK / SatisETK, this endpoint takes plain
   # KVKK / ETK and applies them to the signed-in user.
   #
-  # KVKK is Turkey's data-protection law and ETK its electronic-commerce law, so
-  # they are exposed by what they mean rather than by the statute they come from —
-  # matching the `consents` block of the login response.
+  # KVKK is Turkey's data-protection law and ETK its electronic-commerce law. This
+  # project had exposed them by what they mean rather than by the statute; the agreed
+  # vocabulary keeps the acronyms — `KVKK` / `ETK` here, `ysKvkk` / `ysEtk` in the login
+  # response — so the acronyms are what the contract carries. Note the two spellings of
+  # the same concept between the two endpoints; that is theirs, not a slip here.
   #
   # The legacy path is `/kullanici` (user) with no identifier: the subject is
   # whoever the token belongs to. The exposed path says so explicitly.
