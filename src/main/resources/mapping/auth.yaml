@@ -11,15 +11,17 @@
 
 # NAMING STATUS — read before editing an exposed name.
 #
-#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
-#   RESPONSE fields : still proposals. The EN document covers request bodies only;
-#                     roughly 110 response fields have no agreed name yet.
-#   PATHS           : still the resource-oriented ones chosen here. The EN document
-#                     translates the legacy paths instead (/authorized-service/login);
-#                     which style to adopt is decided once the full document arrives.
+#   This file is DONE. Both auth endpoints' requests and responses come from the team's
+#   English vocabulary as published in Notion on 2026-08-24, applied exactly as written.
+#   The other mapping files still carry proposals for their response fields.
 #
-# Two request bodies are also still proposals, because the EN document omits them:
-# the work order line update, and send-status-command.
+#   PATHS remain the resource-oriented ones chosen here. The vocabulary translates the
+#   legacy paths instead (/authorized-service/login); which style to adopt is A22.
+#
+# Two open questions were raised with the team against this file (A25, A26 in
+# docs/open-items.md): `username` here contradicts `userName` in the earlier PDF, and
+# `fullname` is the one name in the response that is not camelCase. Both are applied as
+# the team wrote them rather than corrected, so the contract matches their document.
 
 resources:
 
@@ -34,7 +36,7 @@ resources:
       # Our contract, our field names: anything we do not recognise is a client error.
       unmapped: FAIL
       fields:
-        kullaniciAdi: userName
+        kullaniciAdi: username
         sifre: password
         deviceToken: deviceToken
         osversiyon:
@@ -45,28 +47,34 @@ resources:
             IOS: IOS
             ANDROID: ANDROID
 
+    # The team's vocabulary is flat throughout. This project had grouped three sets of
+    # fields into objects — `role.code`/`role.description`, `appVersions.*`, `consents.*` —
+    # so that a later addition (a role's permissions, a consent's timestamp) would be a new
+    # field rather than a breaking change. The agreed names are flat and the agreed names
+    # win; the trade-off is recorded once in E15, not argued again per field.
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
         token: token
-        adSoyad: fullName
-        # A code and its description: one concept, so one object. Exposing them as two
-        # flat fields would make adding anything else about the role a breaking change.
-        rol: role.code
-        rolAciklama: role.description
-        qr: qrEnabled
+        # Not `fullName`: the vocabulary spells it with a lower-case n, alone among these
+        # names. Applied as written rather than silently corrected — see A26.
+        adSoyad: fullname
+        rol: role
+        rolAciklama: roleDescription
+        qr: qr
 
-        androidversion: appVersions.authorizedServiceAndroid
-        iosversion: appVersions.authorizedServiceIos
-        satisandroidversion: appVersions.salesAndroid
-        satisiosversion: appVersions.salesIos
+        androidversion: androidVersion
+        iosversion: iosVersion
+        satisandroidversion: salesAndroidVersion
+        satisiosversion: salesIosVersion
 
-        # YS = Yetkili Servis, Satis = Sales.
-        # KVKK is the data-privacy consent, ETK the electronic-marketing consent.
-        YSKVKK: consents.authorizedServiceDataPrivacy
-        YSETK: consents.authorizedServiceMarketing
-        SatisKVKK: consents.salesDataPrivacy
-        SatisETK: consents.salesMarketing
+        # YS = Yetkili Servis, Satis = Sales. The vocabulary keeps the Turkish statute
+        # acronyms rather than naming what they mean: KVKK is the data-privacy consent,
+        # ETK the electronic-marketing one.
+        YSKVKK: ysKvkk
+        YSETK: ysEtk
+        SatisKVKK: salesKvkk
+        SatisETK: salesEtk
 
   auth-password-reset-request:
     method: POST
@@ -77,10 +85,8 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        kullaniciAdi: userName
+        kullaniciAdi: username
 
-    # PROVISIONAL: no successful response has been captured for this endpoint. The one
-    # attempt was intercepted by Cloudflare, which answered 403 with an HTML challenge
-    # page instead of the legacy envelope. Declaring no response mapping means the
-    # envelope is still stripped and whatever `result` holds is passed through as-is.
-    # Replace this with a real mapping once a successful sample exists.
+    # No response mapping, and none is needed: both the capture and the team's vocabulary
+    # show `result: null`, which the bridge turns into 204 No Content. There is nothing to
+    # translate. This is the settled shape, not a placeholder.

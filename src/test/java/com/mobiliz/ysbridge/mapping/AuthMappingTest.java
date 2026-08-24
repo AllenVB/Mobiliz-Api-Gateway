@@ -77,28 +77,23 @@ class AuthMappingTest {
             }
             """;
 
+    /** The team's agreed vocabulary: flat throughout, `fullname` with a lower-case n. */
     private static final String EXPOSED_LOGIN_RESULT =
             """
             {
               "token": "TEST-TOKEN-0000-0000",
-              "fullName": "Saha Destek 1",
-              "role": {
-                "code": "1",
-                "description": "test"
-              },
-              "qrEnabled": false,
-              "appVersions": {
-                "authorizedServiceAndroid": "2.0.3",
-                "authorizedServiceIos": "1.0(47)",
-                "salesAndroid": "1.0.3",
-                "salesIos": "1.0 (29)"
-              },
-              "consents": {
-                "authorizedServiceDataPrivacy": true,
-                "authorizedServiceMarketing": true,
-                "salesDataPrivacy": true,
-                "salesMarketing": true
-              }
+              "fullname": "Saha Destek 1",
+              "role": "1",
+              "roleDescription": "test",
+              "qr": false,
+              "androidVersion": "2.0.3",
+              "iosVersion": "1.0(47)",
+              "salesAndroidVersion": "1.0.3",
+              "salesIosVersion": "1.0 (29)",
+              "ysKvkk": true,
+              "ysEtk": true,
+              "salesKvkk": true,
+              "salesEtk": true
             }
             """;
 
@@ -171,7 +166,7 @@ class AuthMappingTest {
                     translator.translate(
                             withNewField, login().response(), Direction.TO_ENGLISH, counts);
 
-            assertThat(translated.get("fullName").asText()).isEqualTo("Saha Destek 1");
+            assertThat(translated.get("fullname").asText()).isEqualTo("Saha Destek 1");
             assertThat(translated.get("yeniAlan").asText())
                     .as("an unmapped field is passed through rather than lost")
                     .isEqualTo("x");
@@ -188,7 +183,7 @@ class AuthMappingTest {
                     translator.translate(
                             json(
                                     """
-                                    {"userName": "test-user", "password": "test-password",
+                                    {"username": "test-user", "password": "test-password",
                                      "osVersion": "IOS", "deviceToken": null}"""),
                             login().request(),
                             Direction.TO_LEGACY,
@@ -207,7 +202,7 @@ class AuthMappingTest {
             JsonNode request =
                     json(
                             """
-                            {"userName": "test-user", "password": "test-password", "sifre": "oops"}""");
+                            {"username": "test-user", "password": "test-password", "sifre": "oops"}""");
 
             assertThatThrownBy(
                             () ->
@@ -232,7 +227,7 @@ class AuthMappingTest {
                     translator.translate(
                             json(
                                     """
-                                    {"userName": "test-user"}"""),
+                                    {"username": "test-user"}"""),
                             resource.request(),
                             Direction.TO_LEGACY,
                             TranslationObserver.noop());

@@ -2,35 +2,45 @@
 #
 # NAMING STATUS — read before editing an exposed name.
 #
-#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
-#   RESPONSE fields : still proposals. The EN document covers request bodies only;
-#                     roughly 110 response fields have no agreed name yet.
-#   PATHS           : still the resource-oriented ones chosen here. The EN document
-#                     translates the legacy paths instead (/authorized-service/login);
-#                     which style to adopt is decided once the full document arrives.
+#   Every name below comes from the team's English vocabulary as published in Notion on
+#   2026-08-24, applied EXACTLY as written. Where their spelling is inconsistent with
+#   their own other names, theirs is kept and the discrepancy is raised instead — see
+#   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-# Two request bodies are also still proposals, because the EN document omits them:
-# the work order line update, and send-status-command.
+#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
+#   legacy paths instead (/authorized-service/service-request-lines/). That is A22.
 #
 # Reading the file: the key is always the legacy (Turkish) name, the value is the name
-# this bridge exposes. A dot in the exposed name groups the field into a nested object.
-# Long form adds `type`, `values`, `nested` or `emptyStringAsNull`.
+# this bridge exposes. Long form adds `type`, `values`, `nested` or `emptyStringAsNull`.
 #
-# Opaque references — CRM option-set codes and GUIDs — are exposed as objects
-# (`brand.id`, `fuelType.code`) rather than flat values (`brandId`, `fuelTypeCode`).
-# They are opaque only until the reference-data endpoint is used to resolve them, and
-# when that happens the label is added as `brand.name` — a new field, not a changed one.
-# A flat `brandId` string would have had to become an object, breaking every caller.
+# The agreed vocabulary is FLAT. This project had exposed opaque CRM references as
+# objects (`brand.id`, `fuelType.code`) so that resolving one later would add a field
+# rather than change one; the agreed names are plain strings and the agreed names win.
+# The cost of that is recorded once in E15 and is not re-argued per field.
 
 resources:
 
   # --------------------------------------------------------------------------
   # Work order list
   # --------------------------------------------------------------------------
-  # The legacy path ends in a bare `0` whose meaning is unknown — most likely a status
-  # filter. It is modelled as a path variable so nothing is hardcoded; once its meaning
-  # is confirmed it should become a named query parameter instead.
-  # No response mapping: the captured request had not finished loading.
+  # NO RESPONSE MAPPING, and it cannot be written yet.
+  #
+  # The vocabulary gives this endpoint's English field names in full — id, srvNumber,
+  # priority, customer, subject, serviceLocation, orgStartDateTime, orgEndDateTime,
+  # remainingSubTaskCount, totalTaskCount, requesterName1, requesterPhone1,
+  # requesterName2, requesterPhone2, customerLocation, serialNoList, technicalService,
+  # createdDate, targetDate, owner, status, authorizedServiceName,
+  # authorizedServicePhone, authorizedServiceContact, authorizedServiceAddress,
+  # completionDate, completionDuration — but a mapping needs BOTH sides, and no
+  # successful response has ever been captured from this endpoint (it answers 524 after
+  # 125 seconds). The legacy names those 27 English names correspond to are unknown.
+  #
+  # Pairing them by guesswork would produce a mapping that looks complete and silently
+  # renames the wrong fields. Tracked as A28.
+  #
+  # Note also that the vocabulary documents this path as `/service-requests/1`, while
+  # every capture used `/servistalepleri/0`. The trailing segment is modelled as a path
+  # variable, so both work without a change here.
   work-order-list:
     method: GET
     exposedPath: /api/v1/work-orders/{listFilter}
@@ -47,19 +57,20 @@ resources:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
         detayId: detailId
-        srvNumarasi: serviceNumber
-        plaka: plateNumber
-        serino: serialNumber
+        srvNumarasi: srvNumber
+        plaka: plate
+        serino: serialNo
         vendorCode: vendorCode
-        gsm: phoneNumber
+        gsm: gsm
         durum: status
         churn: churn
-        ysozelnot: authorizedServiceNote
-        sahadestekok: fieldSupportAllowed
-        bakimonarimok: maintenanceAllowed
-        # NOTE: a number here, but a string in servistalepsatiri. Normalising the two
-        # would need the engine to know the legacy type as well as the exposed one.
-        hizmetLokasyonu: serviceLocation.code
+        ysozelnot: ysSpecialNote
+        sahadestekok: fieldSupportOk
+        bakimonarimok: maintenanceRepairOk
+        # NOTE: a number here, but a string in servistalepsatiri, for the same option
+        # set. Both are exposed as `serviceLocation`, so the JSON type of that field
+        # differs between two endpoints of the same contract. Raised as A29.
+        hizmetLokasyonu: serviceLocation
         sonServisFotolari:
           exposed: lastServicePhotos
           emptyStringAsNull: true
@@ -77,48 +88,50 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        plaka: plateNumber
-        serino: serialNumber
-        gsm: phoneNumber
+        plaka: plate
+        serino: serialNo
+        gsm: gsm
         canBusProfile: canBusProfile
         vendorCode: vendorCode
-        stfFormNo: stfFormNumber
-        telOperator: telecomOperator.code
+        stfFormNo: stfFormNo
+        telOperator: phoneOperator
         apnYok: apnMissing
-        km: odometerKm
+        km: km
         testHatti: testLine
-        aracTipi: vehicleType.id
-        yil: year.code
-        marka: brand.id
-        model: model.id
-        motorHacmi: engineVolume.code
-        yakitTuru: fuelType.code
-        hizmetLokasyonu: serviceLocation.code
-        # "şehir içi / şehir dışı" — inside or outside the city. The polarity of the
-        # flag is not obvious from the name; confirm before trusting it.
-        sehirIciDisi: cityScope
-        sehir: city.id
-        ilce: district.id
-        semt: neighbourhood
-        ysozelnot: authorizedServiceNote
-        plakakontrolsuz: plateCheckSkipped
-        yolbedelsiz: travelFeeWaived
+        aracTipi: vehicleType
+        yil: year
+        marka: brand
+        model: model
+        motorHacmi: engineVolume
+        yakitTuru: fuelType
+        hizmetLokasyonu: serviceLocation
+        # "şehir içi / şehir dışı" — inside or outside the city. Neither the legacy name
+        # nor the agreed `inOutCity` says which value means which. Still A15.
+        sehirIciDisi: inOutCity
+        sehir: city
+        ilce: district
+        semt: neighborhood
+        ysozelnot: ysSpecialNote
+        plakakontrolsuz: plateUncontrolled
+        yolbedelsiz: freeOfCharge
         churn: churn
-        lastikmarka: tyreBrand.code
-        lastikebat: tyreSize.code
-        saseno: chassisNumber
-        otokocmu: otokocCustomer
+        lastikmarka: tireBrand
+        lastikebat: tireSize
+        saseno: chassisNo
+        otokocmu: isOtokoc
 
   # UNCONFIRMED TARGET — read this before relying on it.
   #
-  # The Hoppscotch collection points this operation at PUT /yetkiliservis/servistalepleri/0,
-  # which answers 405 with `Allow: GET`. That route is read-only and accepts no write
-  # method, so the saved request cannot ever have worked.
+  # The vocabulary documents this operation as PUT /authorized-service/service-requests/0,
+  # i.e. against the *service requests* route. That is the same mistake the Hoppscotch
+  # collection makes: PUT /yetkiliservis/servistalepleri/0 answers 405 with `Allow: GET`,
+  # so that route is read-only and the operation cannot ever have worked there.
   #
-  # The payload is field-for-field the response of servistalepsatiri/{detayId}, and this
-  # API already serves GET and PUT from one path elsewhere (immobilizercheck, servisdetay),
-  # so that is the assumed target. It has not been verified against the real API.
-  # Tracked as A9 in docs/open-items.md.
+  # The body is field-for-field the response of servistalepsatiri/{detayId}, and this API
+  # already serves GET and PUT from one path elsewhere (immobilizercheck, servisdetay),
+  # so that is the assumed target and what is configured below. Still unverified against
+  # the real API: the 2026-08-24 attempt was rejected for a malformed identifier, because
+  # the saved request also carries the literal `0`. Tracked as A9 and A19.
   work-order-line-update:
     method: PUT
     exposedPath: /api/v1/work-order-lines/{detailId}
@@ -126,39 +139,42 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        plaka: plateNumber
-        serino: serialNumber
-        gsm: phoneNumber
+        plaka: plate
+        serino: serialNo
+        gsm: gsm
         canBusProfile: canBusProfile
         vendorCode: vendorCode
-        stfFormNo: stfFormNumber
-        telOperator: telecomOperator.code
+        stfFormNo: stfFormNo
+        telOperator: phoneOperator
         apnYok: apnMissing
-        km: odometerKm
+        km: km
         testHatti: testLine
-        aracTipi: vehicleType.id
-        yil: year.code
-        marka: brand.id
-        model: model.id
-        motorHacmi: engineVolume.code
-        yakitTuru: fuelType.code
-        hizmetLokasyonu: serviceLocation.code
-        sehirIciDisi: cityScope
-        sehir: city.id
-        ilce: district.id
-        semt: neighbourhood
-        ysozelnot: authorizedServiceNote
-        plakakontrolsuz: plateCheckSkipped
-        yolbedelsiz: travelFeeWaived
+        aracTipi: vehicleType
+        yil: year
+        marka: brand
+        model: model
+        motorHacmi: engineVolume
+        yakitTuru: fuelType
+        hizmetLokasyonu: serviceLocation
+        sehirIciDisi: inOutCity
+        sehir: city
+        ilce: district
+        semt: neighborhood
+        ysozelnot: ysSpecialNote
+        plakakontrolsuz: plateUncontrolled
+        yolbedelsiz: freeOfCharge
         churn: churn
-        lastikmarka: tyreBrand.code
-        lastikebat: tyreSize.code
-        saseno: chassisNumber
-        otokocmu: otokocCustomer
+        lastikmarka: tireBrand
+        lastikebat: tireSize
+        saseno: chassisNo
+        otokocmu: isOtokoc
 
   # --------------------------------------------------------------------------
   # Telematics status of the vehicle on a line
   # --------------------------------------------------------------------------
+  # The vocabulary keeps this payload almost entirely as the legacy API sends it —
+  # `canBusKM`, `lastGPSTime`, `canbusEngineRPM`, `DVR` and the whole tacho block are
+  # unchanged. Only a handful are actually renamed. That is the team's call.
   vehicle-status:
     method: GET
     exposedPath: /api/v1/work-order-lines/{detailId}/vehicle-status
@@ -166,61 +182,66 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        plaka: plateNumber
-        serino: serialNumber
-        gsm: phoneNumber
-        emoveGsmNumber: emovePhoneNumber
-        sunucukaydi: serverRegistered
-        sonAdresBilgisi: lastAddress
+        plaka: plate
+        serino: serialNo
+        gsm: gsm
+        emoveGsmNumber: emoveGsmNumber
+        sunucukaydi: serverRecord
+        sonAdresBilgisi: lastAddressInfo
         donanimBilgisi: hardwareInfo
-        cihazYazilimVersiyonu: deviceFirmwareVersion
+        cihazYazilimVersiyonu: deviceSoftwareVersion
         mesafeSayaci: distanceCounter
-        # A decimal delivered as a string ("13.24"). Left as a string for now: the
-        # decimal handling boundary is recorded in docs/open-items.md.
+        # A decimal delivered as a string ("13.24"), left as a string.
         anaBeslemeVoltaji: mainSupplyVoltage
-        kontakAktivitesi: ignitionActive
+        kontakAktivitesi: ignitionActivity
         immobilizer: immobilizer
-        DVR: dvrAvailable
+        DVR: DVR
 
         # Timestamps. ISO-8601 without an offset — the bridge does not invent one.
-        ilkVeriTarihi: timestamps.firstDataAt
-        sonVeriTarihi: timestamps.lastDataAt
-        lastGPSTime: timestamps.lastGpsAt
-        lastBulkGSensorTime: timestamps.lastBulkGSensorAt
-        lastMultiGpsTime: timestamps.lastMultiGpsAt
-        lastAccelerationandGpsTime: timestamps.lastAccelerationAndGpsAt
+        ilkVeriTarihi: firstDataDate
+        sonVeriTarihi: lastDataDate
+        lastGPSTime: lastGPSTime
+        lastBulkGSensorTime: lastBulkGSensorTime
+        lastMultiGpsTime: lastMultiGpsTime
+        lastAccelerationandGpsTime: lastAccelerationandGpsTime
 
-        # CAN bus block.
-        # WARNING: the legacy payload carries both `canbusYakitSeviyesi` and
-        # `canbusFuelLevel`. They look like the same reading under two names; both were
-        # null in the capture, so the difference is unverified. Confirm before use.
-        canbusok: canBus.ok
-        canbusHiz: canBus.speed
-        canBusKM: canBus.odometer
-        canbusEngineRPM: canBus.engineRpm
-        canbusYakitSeviyesi: canBus.fuelLevel
-        canbusFuelLevel: canBus.fuelLevelAlternate
-        canbusLastFuelUsed: canBus.lastFuelUsed
+        # CAN bus.
+        #
+        # `canbusFuelLevel_TR` is applied as the vocabulary writes it. It is almost
+        # certainly a working marker rather than a name anyone meant to publish: it is
+        # the only name in the whole vocabulary with a language suffix, and it exists
+        # only because the legacy payload carries two fuel-level fields —
+        # `canbusYakitSeviyesi` and `canbusFuelLevel` — that nobody has told apart yet.
+        # Naming the pair rather than resolving it keeps the ambiguity in the contract.
+        # Raised as A30; A12 stays open underneath it.
+        canbusok: canbusOk
+        canbusHiz: canbusSpeed
+        canBusKM: canBusKM
+        canbusEngineRPM: canbusEngineRPM
+        canbusYakitSeviyesi: canbusFuelLevel_TR
+        canbusFuelLevel: canbusFuelLevel
+        canbusLastFuelUsed: canbusLastFuelUsed
         canBusProfile:
-          exposed: canBus.profile
+          exposed: canBusProfile
           emptyStringAsNull: true
 
-        # Tachograph block. `modularSensorTemprature` is misspelled in the legacy API;
-        # the exposed name fixes it.
-        lastTachoDriver1Cardno: tachograph.driver1CardNumber
-        lastTachoDriver1Name: tachograph.driver1Name
-        lastCalibrationStatusDescription: tachograph.lastCalibrationStatus
-        tachomodel: tachograph.model
-        tachoversion: tachograph.version
+        # Tachograph. The vocabulary corrects the legacy misspelling
+        # (`modularSensorTemprature` → `modularSensorTemperature`), which is exactly the
+        # kind of thing this layer exists to do.
+        lastTachoDriver1Cardno: lastTachoDriver1Cardno
+        lastTachoDriver1Name: lastTachoDriver1Name
+        lastCalibrationStatusDescription: lastCalibrationStatusDescription
+        tachomodel: tachoModel
+        tachoversion: tachoVersion
         modularSensorTemprature: modularSensorTemperature
         serialTemperature: serialTemperature
 
   # --------------------------------------------------------------------------
   # Feedback on a line
   # --------------------------------------------------------------------------
-  # The captured attempt failed with a raw .NET message, "Input string was not in a
-  # correct format.", which suggests geriBildirimNedeni is a numeric code rather than
-  # free text. The reason code list is still missing.
+  # A18 is closed by the vocabulary: it documents `"feedbackReason": 6`, a number. The
+  # captured failure — "Input string was not in a correct format." — was the free-text
+  # value in the older document being rejected. The code list itself is still unknown.
   work-order-line-feedback:
     method: PUT
     exposedPath: /api/v1/work-order-lines/{detailId}/feedback
@@ -234,6 +255,8 @@ resources:
   # --------------------------------------------------------------------------
   # Completion status  (a failure here still carries a payload)
   # --------------------------------------------------------------------------
+  # A14 is closed: the vocabulary documents the success shape as `{"status": true}`, so
+  # the captured `{"durumu": false}` is the same field with the failing value.
   work-order-line-completion-status:
     method: GET
     exposedPath: /api/v1/work-order-lines/{detailId}/completion-status
@@ -241,16 +264,16 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        durumu: completed
+        durumu: status
 
   # --------------------------------------------------------------------------
   # Completion writes
   # --------------------------------------------------------------------------
   # DELIBERATELY ABSENT: "complete work order". The collection points it at
   # PUT /yetkiliservis/demontajtamamlandi/{detayId} with no body, which answers
-  # 411 Length Required — the same URL as complete-demontage, so the entry looks like a
-  # copy-paste error. Adding a guessed URL here would be worse than leaving the gap
-  # visible. Tracked in docs/open-items.md.
+  # 411 Length Required — the same URL as complete-demontage. The vocabulary does not
+  # list the operation at all, which is itself evidence the entry is spurious rather
+  # than a real endpoint with a lost URL. Tracked as A10.
 
   work-order-line-demontage-completion:
     method: PUT
@@ -316,15 +339,16 @@ resources:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
         id: id
-        SaseNo: chassisNumber
-        MotorNo: engineNumber
-        AracTipi: vehicleType.id
-        Marka: brand.id
-        Model: model.id
+        SaseNo: chassisNo
+        MotorNo: engineNo
+        AracTipi: vehicleType
+        Marka: brand
+        Model: model
         # These arrive as numbers here but as strings on the work order line, for what
-        # looks like the same option set.
-        MotorHacmi: engineVolume.code
-        YakitTuru: fuelType.code
-        Sene: year.code
-        LastikMarka: tyreBrand.code
-        LastikEbat: tyreSize.code
+        # looks like the same option set — and both are now exposed under the same
+        # names, so the type difference is visible in the contract. Part of A29.
+        MotorHacmi: engineVolume
+        YakitTuru: fuelType
+        Sene: year
+        LastikMarka: tireBrand
+        LastikEbat: tireSize

@@ -151,7 +151,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"userName": "test-user", "password": "test-password",
+                            {"username": "test-user", "password": "test-password",
                              "osVersion": "IOS", "deviceToken": null}""",
                             null);
 
@@ -168,11 +168,11 @@ class BridgeEndToEndTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             JsonNode body = response.getBody();
             assertThat(body).isNotNull();
-            assertThat(body.get("fullName").asText()).isEqualTo("Saha Destek 1");
-            assertThat(body.get("role").get("code").asText()).isEqualTo("1");
-            assertThat(body.get("appVersions").get("authorizedServiceAndroid").asText())
-                    .isEqualTo("2.0.3");
-            assertThat(body.get("consents").get("salesMarketing").asBoolean()).isTrue();
+            assertThat(body.get("fullname").asText()).isEqualTo("Saha Destek 1");
+            assertThat(body.get("role").asText()).isEqualTo("1");
+            assertThat(body.get("roleDescription").asText()).isEqualTo("test");
+            assertThat(body.get("androidVersion").asText()).isEqualTo("2.0.3");
+            assertThat(body.get("salesEtk").asBoolean()).isTrue();
             assertThat(body.has("adSoyad")).as("no legacy name may survive").isFalse();
         }
 
@@ -191,7 +191,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"userName": "u", "password": "p", "osVersion": "IOS"}""",
+                            {"username": "u", "password": "p", "osVersion": "IOS"}""",
                             null);
 
             assertThat(response.getStatusCode())
@@ -206,7 +206,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/login",
                             """
-                            {"userName": "u", "password": "p", "sifre": "oops"}""",
+                            {"username": "u", "password": "p", "sifre": "oops"}""",
                             null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -246,7 +246,7 @@ class BridgeEndToEndTest {
             ResponseEntity<JsonNode> response = callGet("/api/v1/work-order-lines/abc");
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().get("plateNumber").asText()).isEqualTo("00XXX000");
+            assertThat(response.getBody().get("plate").asText()).isEqualTo("00XXX000");
 
             // Exposed contract: Authorization: Bearer. Legacy contract: a bare `token` header.
             LEGACY.verify(
@@ -304,7 +304,7 @@ class BridgeEndToEndTest {
             ResponseEntity<JsonNode> response = callGet("/api/v1/vehicles?serialNumber=211");
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().get("items").get(0).get("chassisNumber").asText())
+            assertThat(response.getBody().get("items").get(0).get("chassisNo").asText())
                     .isEqualTo("VIN000");
 
             LEGACY.verify(
@@ -436,7 +436,7 @@ class BridgeEndToEndTest {
                             HttpMethod.POST,
                             "/api/v1/auth/password-reset-requests",
                             """
-                            {"userName": "test-user"}""",
+                            {"username": "test-user"}""",
                             null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -505,7 +505,7 @@ class BridgeEndToEndTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
             JsonNode problem = response.getBody();
             assertThat(problem.get("code").asText()).isEqualTo("DEVICE_GPS_TIME_MISSING");
-            assertThat(problem.get("payload").get("completed").asBoolean())
+            assertThat(problem.get("payload").get("status").asBoolean())
                     .as("data arriving with a failure must not be dropped, and must be translated")
                     .isFalse();
         }
@@ -527,7 +527,7 @@ class BridgeEndToEndTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
             JsonNode problem = response.getBody();
             assertThat(problem.get("code").asText()).isEqualTo("IGNITION_ACTIVE");
-            assertThat(problem.get("payload").get("completed").asBoolean()).isFalse();
+            assertThat(problem.get("payload").get("status").asBoolean()).isFalse();
         }
 
         @Test
@@ -659,7 +659,7 @@ class BridgeEndToEndTest {
         void shouldRejectABodyLargerThanTheConfiguredLimit() {
             String oversized =
                     """
-                    {"plateNumber": "%s"}"""
+                    {"plate": "%s"}"""
                             .formatted("X".repeat(5 * 1024));
 
             ResponseEntity<JsonNode> response =
@@ -761,7 +761,7 @@ class BridgeEndToEndTest {
                             HttpMethod.PUT,
                             "/api/v1/work-order-lines/abc",
                             """
-                            {"plateNumber": null}""",
+                            {"plate": null}""",
                             authenticated());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);

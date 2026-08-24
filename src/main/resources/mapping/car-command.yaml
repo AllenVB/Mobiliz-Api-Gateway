@@ -2,15 +2,16 @@
 #
 # NAMING STATUS — read before editing an exposed name.
 #
-#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
-#   RESPONSE fields : still proposals. The EN document covers request bodies only;
-#                     roughly 110 response fields have no agreed name yet.
-#   PATHS           : still the resource-oriented ones chosen here. The EN document
-#                     translates the legacy paths instead (/authorized-service/login);
-#                     which style to adopt is decided once the full document arrives.
+#   Every name below comes from the team's English vocabulary as published in Notion on
+#   2026-08-24, applied EXACTLY as written. Where their spelling is inconsistent with
+#   their own other names, theirs is kept and the discrepancy is raised instead — see
+#   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-# Two request bodies are also still proposals, because the EN document omits them:
-# the work order line update, and send-status-command.
+#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
+#   legacy paths instead (/authorized-service/...). That is A22.
+#
+#   Still not covered by the vocabulary: the send-status-command body (A16) and the
+#   user-consents update (its section had not been published when this was applied).
 
 resources:
 
@@ -39,7 +40,17 @@ resources:
       unmapped: FAIL
       fields:
         durum: status
-    # Response carries no payload on success, which the bridge turns into 204.
+    # THE TWO SOURCES DISAGREE about what this write returns. The capture shows
+    # `result: null`, which the bridge turns into 204 No Content; the vocabulary
+    # documents `result: {"status": true}`, an echo of what was just set.
+    #
+    # The mapping below covers both without choosing: it is consulted only when a
+    # payload actually arrives, so a null result still becomes a 204 and a `durum`
+    # result is translated rather than passed through in Turkish. Raised as A31.
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        durum: status
 
   # --------------------------------------------------------------------------
   # Vehicle command
@@ -59,10 +70,9 @@ resources:
       fields:
         # Each of these is a label paired with its code. This project grouped them into
         # objects (`command.name` + `command.code`) so a third attribute could be added
-        # later without changing what already exists; the team's agreed vocabulary is
-        # flat, and the agreed name won. Recorded as E15 in docs/open-items.md, because
-        # the response side still groups its pairs and that split has to be settled once
-        # the response vocabulary arrives.
+        # later without changing what already exists; the agreed vocabulary is flat and
+        # the agreed name won. The response vocabulary has since arrived and is flat too,
+        # so the contract is at least consistent with itself. E15 records the trade-off.
         komut: command
         komutid: commandId
         durum: status

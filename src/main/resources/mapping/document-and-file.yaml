@@ -2,15 +2,16 @@
 #
 # NAMING STATUS — read before editing an exposed name.
 #
-#   REQUEST fields  : taken from the team's "Yetkili Servis -EN" document. Agreed.
-#   RESPONSE fields : still proposals. The EN document covers request bodies only;
-#                     roughly 110 response fields have no agreed name yet.
-#   PATHS           : still the resource-oriented ones chosen here. The EN document
-#                     translates the legacy paths instead (/authorized-service/login);
-#                     which style to adopt is decided once the full document arrives.
+#   Every name below comes from the team's English vocabulary as published in Notion on
+#   2026-08-24, applied EXACTLY as written. Where their spelling is inconsistent with
+#   their own other names, theirs is kept and the discrepancy is raised instead — see
+#   docs/open-items.md. Inventing a name they did not write would be worse.
 #
-# Two request bodies are also still proposals, because the EN document omits them:
-# the work order line update, and send-status-command.
+#   PATHS remain the resource-oriented ones chosen here; the vocabulary translates the
+#   legacy paths instead (/authorized-service/...). That is A22.
+#
+#   Still not covered by the vocabulary: the send-status-command body (A16) and the
+#   user-consents update (its section had not been published when this was applied).
 
 resources:
 
@@ -41,7 +42,7 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        link: documentUrl
+        link: link
 
   # --------------------------------------------------------------------------
   # File attachment upload

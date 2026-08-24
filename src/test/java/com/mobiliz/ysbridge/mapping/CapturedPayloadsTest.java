@@ -384,7 +384,9 @@ class CapturedPayloadsTest {
                             resource("accessory-document").response(),
                             Direction.TO_ENGLISH);
 
-            assertThat(exposed.has("link")).isFalse();
+            // `link` is both the legacy name and the agreed English one, so unlike every
+            // other field here the check is that it survives rather than that it does not.
+            assertThat(exposed.get("link").asText()).startsWith("https://");
         }
 
         @Test
