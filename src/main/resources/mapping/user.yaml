@@ -27,11 +27,14 @@ resources:
   # response — so the acronyms are what the contract carries. Note the two spellings of
   # the same concept between the two endpoints; that is theirs, not a slip here.
   #
-  # The legacy path is `/kullanici` (user) with no identifier: the subject is
-  # whoever the token belongs to. The exposed path says so explicitly.
+  # The legacy path is `/kullanici` (user) with no identifier: the subject is whoever
+  # the token belongs to. The exposed path was `/user` for the same reason, and is now
+  # `/kvkk` — the collection renamed the operation after the vocabulary was published,
+  # and the newer name wins. It names the consent rather than the subject, which loses
+  # the "this applies to me" reading, but that is the team's call to make.
   user-consents-update:
     method: PUT
-    exposedPath: /authorized-service/user
+    exposedPath: /authorized-service/kvkk
     legacyPath: /yetkiliservis/kullanici
     request:
       unmapped: FAIL

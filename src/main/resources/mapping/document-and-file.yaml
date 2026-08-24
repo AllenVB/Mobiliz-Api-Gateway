@@ -84,10 +84,11 @@ resources:
   # inflates the payload by about a third and holds the whole file in memory on both
   # sides; worth raising with the team, but the bridge relays it as-is.
   #
-  # No successful response captured — the attempt was made without the token header.
+  # Exposed as `/upload-file`, not the vocabulary's `/file-attachment`: the collection
+  # renamed it afterwards and the newer name wins. The legacy path is unchanged.
   file-upload:
     method: POST
-    exposedPath: /authorized-service/file-attachment/{detailId}
+    exposedPath: /authorized-service/upload-file/{detailId}
     legacyPath: /yetkiliservis/dosyaeki/{detailId}
     request:
       unmapped: FAIL
