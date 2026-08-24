@@ -93,8 +93,13 @@ endpoint is used to resolve them, the label arrives as `brand.name`: a **new fie
 changed one. A flat string would have had to become an object, breaking every caller.
 
 The same rule turned two flat fields into one object where the legacy API already had a
-pair: `rol` + `rolAciklama` are `role.code` + `role.description`, and `komut` + `komutid`
-are `command.name` + `command.code`.
+pair: `rol` + `rolAciklama` are `role.code` + `role.description`.
+
+That rule currently applies to responses only. The team's agreed **request** vocabulary is
+flat — `komut` + `komutid` are `command` + `commandId`, not `command.name` + `command.code`
+— and the agreed name wins over this project's preference. The split is deliberate but not
+permanent: which style the whole contract settles on is decided when the response
+vocabulary arrives (E15 and A20 in `docs/open-items.md`).
 
 **Nothing is said twice.** The legacy envelope carried both `success: true` and
 `type: "SUCCESS"` — the same fact under two names. That redundancy is gone with the

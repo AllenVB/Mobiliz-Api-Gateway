@@ -17,9 +17,11 @@ resources:
   # --------------------------------------------------------------------------
   # Immobilizer: read and write share one legacy path, split by method.
   # --------------------------------------------------------------------------
-  # NOTE: the legacy field is `durum`, which elsewhere in this API means "status"
-  # and holds a code. Here it is a plain boolean, so it is exposed as `active`.
-  # This is why the glossary must never override an explicit per-resource mapping.
+  # NOTE: the legacy field is `durum`, which elsewhere in this API means "status" and
+  # holds a code. Here it is a plain boolean. This project exposed it as `active` to
+  # keep the two apart; the team's agreed vocabulary calls it `status`, and the agreed
+  # name won. The trap is still real — the same legacy name means two different things
+  # in two places — so the glossary must never override an explicit per-resource mapping.
   immobilizer-status:
     method: GET
     exposedPath: /api/v1/work-order-lines/{detailId}/immobilizer
@@ -55,8 +57,12 @@ resources:
     request:
       unmapped: FAIL
       fields:
-        # Each of these is a label paired with its code — one concept per object, so a
-        # third attribute can be added later without changing what already exists.
+        # Each of these is a label paired with its code. This project grouped them into
+        # objects (`command.name` + `command.code`) so a third attribute could be added
+        # later without changing what already exists; the team's agreed vocabulary is
+        # flat, and the agreed name won. Recorded as E15 in docs/open-items.md, because
+        # the response side still groups its pairs and that split has to be settled once
+        # the response vocabulary arrives.
         komut: command
         komutid: commandId
         durum: status
