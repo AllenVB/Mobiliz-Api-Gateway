@@ -246,16 +246,19 @@ resources:
   # captured failure — "Input string was not in a correct format." — was the free-text
   # value in the older document being rejected. The code list itself is still unknown.
   #
-  # WHAT DOES THE IDENTIFIER SELECT? The collection calls it `detayId` — a work order
-  # *line*. The vocabulary calls it `{requsetId}` / `{talepID}` — a work order. Feedback
-  # therefore hangs off a line in one source and off the whole request in the other, and
-  # that is a modelling difference, not a spelling one. Left as a line, matching the
-  # collection, because that is the source that was actually executed against the API.
-  # Raised as A32; the exposed path changes if the vocabulary turns out to be right.
-  work-order-line-feedback:
+  # A32 RESOLVED, against the collection. The identifier is a work order, not one of
+  # its lines: the revised vocabulary pairs `/feedback/{requsetId}` with
+  # `/geribildirim/{talepId}`, and `talepId` is unambiguous — it is the same word the
+  # work order line list uses for its parent. The collection's `detayId` was wrong.
+  #
+  # The variable is spelled `requestId` here rather than the vocabulary's `requsetId`.
+  # A path variable name never appears in a URL — only in this template — so this is
+  # documentation, not contract, and carrying an obvious transposition into it would
+  # help nobody. The typo is reported rather than propagated.
+  work-order-feedback:
     method: PUT
-    exposedPath: /authorized-service/feedback/{detailId}
-    legacyPath: /yetkiliservis/geribildirim/{detailId}
+    exposedPath: /authorized-service/feedback/{requestId}
+    legacyPath: /yetkiliservis/geribildirim/{requestId}
     request:
       unmapped: FAIL
       fields:
@@ -279,11 +282,20 @@ resources:
   # --------------------------------------------------------------------------
   # Completion writes
   # --------------------------------------------------------------------------
-  # DELIBERATELY ABSENT: "complete work order". The collection points it at
-  # PUT /yetkiliservis/demontajtamamlandi/{detayId} with no body, which answers
-  # 411 Length Required — the same URL as complete-demontage. The vocabulary does not
-  # list the operation at all, which is itself evidence the entry is spurious rather
-  # than a real endpoint with a lost URL. Tracked as A10.
+  # A10 CLOSED. "Complete work order" does exist, and its URL is the *write* side of
+  # the completion-status endpoint: PUT /yetkiliservis/cihaztamamlandi/{detayId}, the
+  # same path the GET above reads. The collection had it pointed at
+  # /demontajtamamlandi/ — complete-demontage's URL — which is why every attempt
+  # answered 411: that URL wants a body and none was sent.
+  #
+  # It takes no body of its own. The vocabulary notes that one must still be sent,
+  # because an empty request is rejected by IIS with 411 before the application sees
+  # it. That is the legacy API's problem, not the caller's: this bridge sends `{}`
+  # when a write has nothing to say, so a caller never has to know.
+  work-order-line-completion:
+    method: PUT
+    exposedPath: /authorized-service/device-completed/{detailId}
+    legacyPath: /yetkiliservis/cihaztamamlandi/{detailId}
 
   work-order-line-demontage-completion:
     method: PUT

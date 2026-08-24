@@ -2,39 +2,29 @@
 #
 # NAMING STATUS — read before editing an exposed name.
 #
-#   Every name below comes from the team's English vocabulary as published in Notion on
-#   2026-08-24, applied EXACTLY as written. Where their spelling is inconsistent with
-#   their own other names, theirs is kept and the discrepancy is raised instead — see
-#   docs/open-items.md. Inventing a name they did not write would be worse.
+#   Every name below comes from the team's English vocabulary as published in Notion,
+#   revised 2026-08-24, applied EXACTLY as written. Where their spelling is inconsistent
+#   with their own other names, theirs is kept and the discrepancy is raised instead —
+#   see docs/open-items.md. Inventing a name they did not write would be worse.
 #
 #   PATHS are the vocabulary's own, adopted on the team's instruction: the legacy paths
 #   translated into English, with no version segment. A22 is closed.
-#
-#   Still not covered by the vocabulary: the send-status-command body (A16).
 
 resources:
 
   # --------------------------------------------------------------------------
   # Service detail, read
   # --------------------------------------------------------------------------
-  # No successful response has been captured: both attempts were made without the
-  # token header and came back "Token Bilgisi Eksik". Declaring no response mapping
-  # means the payload is relayed untranslated until a real sample exists, which is
-  # visible rather than silently wrong.
-  # The first successful capture arrived on 2026-08-24, once the token header was
-  # added to the request. Sixteen fields, in four pairs plus the diagnosis block.
+  # A34 CLOSED by the revised vocabulary. The first successful capture (2026-08-24)
+  # showed sixteen fields, five of which had no agreed name; the revision names all
+  # sixteen, and renames four that the earlier draft had called something else:
   #
-  # Eleven of them already have agreed English names, because the *update* request
-  # for this same resource names them — a field is not named twice just because it
-  # appears in both directions. The remaining five have no agreed name yet:
+  #   cableWiringUnderMaintenance → cableInstallationUnderMaintenance
+  #   maintenanceAccessory1/2/3   → accessory1/2/3UnderMaintenance
   #
-  #   cihaz · kablotesisat · gsm · varisegpsanten · bakimdakivarisegpsanten
-  #
-  # They are left unmapped rather than invented, so they relay untranslated and are
-  # listed by /internal/mapping/coverage until the team names them. Note that
-  # `bakimdakivarisegpsanten` completes a pair whose other three members the update
-  # request does carry — so the documented request body is missing it too. Both
-  # points are raised as A34.
+  # The shape is four pairs — a part's current state and its under-maintenance state —
+  # followed by the diagnosis block. `varise` is kept as the vocabulary spells it; it
+  # is not an English word and is presumably meant to carry the legacy `varisegps`.
   service-detail:
     method: GET
     exposedPath: /authorized-service/service-detail/{detailId}
@@ -42,49 +32,22 @@ resources:
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
-        # Which parts are under maintenance — the same names the update request uses.
+        # Current state of each part.
+        cihaz: device
+        kablotesisat: cableInstallation
+        gsm: gsm
+        varisegpsanten: variseGpsAntenna
+
+        # The same four, as taken in for maintenance.
         bakimdakicihaz: deviceUnderMaintenance
-        bakimdakikablotesisat: cableWiringUnderMaintenance
+        bakimdakikablotesisat: cableInstallationUnderMaintenance
         bakimdakigsm: gsmUnderMaintenance
-        bakimdakiaksesuar1: maintenanceAccessory1
-        bakimdakiaksesuar2: maintenanceAccessory2
-        bakimdakiaksesuar3: maintenanceAccessory3
+        bakimdakivarisegpsanten: variseGpsAntennaUnderMaintenance
+        bakimdakiaksesuar1: accessory1UnderMaintenance
+        bakimdakiaksesuar2: accessory2UnderMaintenance
+        bakimdakiaksesuar3: accessory3UnderMaintenance
 
         # Diagnosis and resolution.
-        sorununkaynagi: problemSource
-        sorununkaynagidetay: problemSourceDetail
-        cozumdetay: solutionDetail
-
-        resimyukle: uploadImage
-        kargodurumu: cargoStatus
-
-  # --------------------------------------------------------------------------
-  # Service detail, write
-  # --------------------------------------------------------------------------
-  # ⚠ THIS AND `service-maintenance-update` BELOW SHARE ONE LEGACY ENDPOINT.
-  # Both are PUT /yetkiliservis/servisdetay/{detayId}; the legacy API tells them
-  # apart only by which fields the body carries. That is fragile — a client sending
-  # both sets at once would get undefined behaviour — and is reported to the team.
-  #
-  # The bridge gives them two distinct exposed paths so callers cannot conflate
-  # them, and each declares `unmapped: FAIL` so a body mixing the two sets is
-  # rejected here rather than at the legacy API.
-  service-detail-update:
-    method: PUT
-    exposedPath: /authorized-service/service-detail/{detailId}
-    legacyPath: /yetkiliservis/servisdetay/{detailId}
-    request:
-      unmapped: FAIL
-      fields:
-        # Which parts were taken in for maintenance.
-        bakimdakicihaz: deviceUnderMaintenance
-        bakimdakikablotesisat: cableWiringUnderMaintenance
-        bakimdakigsm: gsmUnderMaintenance
-        bakimdakiaksesuar1: maintenanceAccessory1
-        bakimdakiaksesuar2: maintenanceAccessory2
-        bakimdakiaksesuar3: maintenanceAccessory3
-
-        # Diagnosis and resolution, free text in the capture.
         sorununkaynagi: problemSource
         sorununkaynagidetay: problemSourceDetail
         cozumdetay: solutionDetail
@@ -94,13 +57,57 @@ resources:
         kargodurumu: cargoStatus
 
   # --------------------------------------------------------------------------
-  # Maintenance shipment details, write
+  # Service detail, write
   # --------------------------------------------------------------------------
-  # Same legacy endpoint as above — see the warning there.
+  # The revised vocabulary documents the request body as the SAME sixteen fields the
+  # response carries, where the earlier draft listed only eleven. The five that were
+  # missing are the four current-state flags and `bakimdakivarisegpsanten` — exactly
+  # the gap raised as A34, now closed from the other side too.
+  #
+  # NOTE what this fixes: the two operations below no longer share a legacy endpoint.
+  # The maintenance write goes to `/teknikservisbirim/`, not `/servisdetay/` — the
+  # collection had it pointed at the wrong URL, which is what made them look like one
+  # endpoint told apart by its body. Recorded against F13.
+  service-detail-update:
+    method: PUT
+    exposedPath: /authorized-service/service-detail/{detailId}
+    legacyPath: /yetkiliservis/servisdetay/{detailId}
+    request:
+      unmapped: FAIL
+      fields:
+        cihaz: device
+        kablotesisat: cableInstallation
+        gsm: gsm
+        varisegpsanten: variseGpsAntenna
+
+        bakimdakicihaz: deviceUnderMaintenance
+        bakimdakikablotesisat: cableInstallationUnderMaintenance
+        bakimdakigsm: gsmUnderMaintenance
+        bakimdakivarisegpsanten: variseGpsAntennaUnderMaintenance
+        bakimdakiaksesuar1: accessory1UnderMaintenance
+        bakimdakiaksesuar2: accessory2UnderMaintenance
+        bakimdakiaksesuar3: accessory3UnderMaintenance
+
+        sorununkaynagi: problemSource
+        sorununkaynagidetay: problemSourceDetail
+        cozumdetay: solutionDetail
+
+        resimyukle: uploadImage
+        kargodurumu: cargoStatus
+
+  # --------------------------------------------------------------------------
+  # Technical service unit — shipment details, write
+  # --------------------------------------------------------------------------
+  # Its own legacy endpoint, `/yetkiliservis/teknikservisbirim/{detayId}`, given by the
+  # revised vocabulary. Every capture went to `/servisdetay/` because that is where the
+  # collection points it; that URL answered without complaint, which is presumably the
+  # same "accepts anything" behaviour seen elsewhere in this API. The vocabulary's URL
+  # is used here because it is the one the team says is right, and it also resolves the
+  # shared-endpoint defect.
   service-maintenance-update:
     method: PUT
     exposedPath: /authorized-service/technical-service-unit/{detailId}
-    legacyPath: /yetkiliservis/servisdetay/{detailId}
+    legacyPath: /yetkiliservis/teknikservisbirim/{detailId}
     request:
       unmapped: FAIL
       fields:

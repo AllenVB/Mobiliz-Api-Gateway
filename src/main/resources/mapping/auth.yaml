@@ -88,5 +88,20 @@ resources:
         kullaniciAdi: username
 
     # No response mapping, and none is needed: both the capture and the team's vocabulary
-    # show `result: null`, which the bridge turns into 204 No Content. There is nothing to
-    # translate. This is the settled shape, not a placeholder.
+    # show `result: null`. There is nothing to translate. This is the settled shape, not a
+    # placeholder.
+
+  # --------------------------------------------------------------------------
+  # Logout
+  # --------------------------------------------------------------------------
+  # New in the revised vocabulary. No body and no payload; the token is invalidated
+  # upstream. The collection lists it as a GET, the vocabulary as a PUT — the
+  # vocabulary is followed, since the team owns the contract and a logout does change
+  # state. Raised as A35 in case the collection is the one that is right.
+  #
+  # `authentication: TOKEN` is deliberate even though it may look redundant: logging
+  # out without saying who you are is not a request this bridge should forward.
+  auth-logout:
+    method: PUT
+    exposedPath: /authorized-service/logout
+    legacyPath: /yetkiliservis/cikis

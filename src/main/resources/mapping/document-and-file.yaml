@@ -15,22 +15,60 @@
 resources:
 
   # --------------------------------------------------------------------------
-  # Accessory installation document
+  # Installation document lookup
   # --------------------------------------------------------------------------
-  # The collection lists this URL twice, as `get document` and as `update accessory`.
-  # They are the same endpoint: `PUT /yetkiliservis/dokuman`. Called with a body it
-  # answers with a document link; called without one it answers 411 Length Required,
-  # which is why the `get document` entry looks broken.
+  # ⚠ THE CAPTURE AND THE VOCABULARY DISAGREE ABOUT THIS BODY.
   #
-  # It is a lookup performed with PUT — the legacy API's choice, not ours. The
-  # exposed contract keeps the method so the semantics are not misrepresented, but
-  # names it for what it actually does.
+  # The collection sends `{aksesuarId, aksesuarAdi, detayid, durumu}` here and gets a
+  # document link back — that is a real, captured, successful exchange. The revised
+  # vocabulary says the body is `{brandId, modelId, documentType}`, an entirely
+  # different set, and gives the accessory fields to `/aksesuarlar/` instead.
   #
-  # NOTE the legacy key `detayid`: lower-case `id`, unlike `detayId` everywhere else.
-  accessory-document:
+  # Both can be true at once if this endpoint ignores fields it does not recognise,
+  # which is exactly what `sendstatuscommand` was shown to do. That would mean the
+  # captured call "worked" while sending the wrong body — returning some default
+  # document rather than the one asked for.
+  #
+  # NO REQUEST MAPPING IS DECLARED, because neither shape can be trusted: the
+  # vocabulary's has no legacy names to map from, and the capture's may never have
+  # been read. The body relays untranslated until this is settled. Raised as A36.
+  #
+  # It is a lookup performed with PUT — the legacy API's choice, not ours.
+  document-lookup:
     method: PUT
     exposedPath: /authorized-service/document
     legacyPath: /yetkiliservis/dokuman
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        link: link
+
+  # --------------------------------------------------------------------------
+  # Accessories of a work order line
+  # --------------------------------------------------------------------------
+  # NEW in the revised vocabulary, and a legacy endpoint this project had never seen:
+  # `/yetkiliservis/aksesuarlar/`. The collection's `get accessories` points at
+  # `/combolar` — the dropdown endpoint — which is why it returned the reference data
+  # and looked like a duplicate of it. It was simply the wrong URL.
+  #
+  # The read answers with an empty array in the vocabulary's example, so no element
+  # names are known and no response mapping can be written yet. Part of A36.
+  accessories:
+    method: GET
+    exposedPath: /authorized-service/accessories/{detailId}
+    legacyPath: /yetkiliservis/aksesuarlar/{detailId}
+
+  # The write takes the four fields the collection had been sending to `/dokuman`.
+  # Their legacy names are known from that capture; whether this endpoint uses the
+  # same ones is not confirmed, since no call to `/aksesuarlar/` has ever been made.
+  #
+  # NOTE the legacy key `detayid`: lower-case `id`, unlike `detayId` everywhere else.
+  # It is carried as captured — if this endpoint spells it the ordinary way, the
+  # mapping is one character wrong and the coverage report will say so.
+  accessory-update:
+    method: PUT
+    exposedPath: /authorized-service/accessories/{accessoryId}
+    legacyPath: /yetkiliservis/aksesuarlar/{accessoryId}
     request:
       unmapped: FAIL
       fields:
@@ -38,10 +76,6 @@ resources:
         aksesuarAdi: accessoryName
         detayid: detailId
         durumu: status
-    response:
-      unmapped: PASSTHROUGH_AND_REPORT
-      fields:
-        link: link
 
   # --------------------------------------------------------------------------
   # File attachment upload

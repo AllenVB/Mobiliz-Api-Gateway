@@ -109,14 +109,16 @@ class CapturedPayloadsTest {
                             // auth.yaml
                             "auth-login",
                             "auth-password-reset-request",
+                            "auth-logout",
                             // work-order.yaml
                             "work-order-list",
                             "work-order-lines",
                             "work-order-line",
                             "work-order-line-update",
                             "vehicle-status",
-                            "work-order-line-feedback",
+                            "work-order-feedback",
                             "work-order-line-completion-status",
+                            "work-order-line-completion",
                             "work-order-line-demontage-completion",
                             "work-order-line-churn-completion",
                             "work-order-line-dvr-status",
@@ -133,7 +135,9 @@ class CapturedPayloadsTest {
                             "service-detail-update",
                             "service-maintenance-update",
                             // document-and-file.yaml
-                            "accessory-document",
+                            "document-lookup",
+                            "accessories",
+                            "accessory-update",
                             "file-upload",
                             // user.yaml
                             "user-consents-update");
@@ -160,18 +164,19 @@ class CapturedPayloadsTest {
         }
 
         @Test
-        void shouldAllowTwoResourcesToShareOneLegacyEndpointWhenTheBodiesDiffer() {
-            // The legacy API tells service-detail-update and service-maintenance-update
-            // apart only by which fields the body carries. The bridge gives them separate
-            // exposed paths so callers cannot conflate them.
+        void shouldGiveTheTwoServiceWritesTheirOwnLegacyEndpoints() {
+            // These two looked like one legacy endpoint told apart by its body, which was
+            // recorded as a defect. The revised vocabulary shows they are separate: the
+            // maintenance write belongs to /teknikservisbirim/, and the collection simply
+            // had it pointed at /servisdetay/.
             assertThat(resource("service-detail-update").legacyPath())
-                    .isEqualTo(resource("service-maintenance-update").legacyPath());
-            assertThat(resource("service-detail-update").exposedPath())
-                    .isNotEqualTo(resource("service-maintenance-update").exposedPath());
+                    .isNotEqualTo(resource("service-maintenance-update").legacyPath());
+            assertThat(resource("service-maintenance-update").legacyPath())
+                    .isEqualTo("/yetkiliservis/teknikservisbirim/{detailId}");
         }
 
         @Test
-        void shouldOnlyRelayAnUntranslatedBodyForTheOneEndpointWhoseShapeIsUnknown() {
+        void shouldOnlyRelayAnUntranslatedBodyWhereTheShapeIsGenuinelyUnknown() {
             List<String> writesWithoutARequestMapping =
                     catalog.resources().stream()
                             .filter(r -> r.method() != HttpMethod.GET)
@@ -182,9 +187,16 @@ class CapturedPayloadsTest {
 
             assertThat(writesWithoutARequestMapping)
                     .as(
-                            "a write that relays its body untranslated defeats the point of the bridge; "
-                                    + "only send-status-command may, because its body was never captured")
-                    .containsExactly("send-status-command");
+                            "a write that relays its body untranslated defeats the point of the bridge, "
+                                    + "so each one here needs a recorded reason: document-lookup "
+                                    + "because the capture and the vocabulary disagree (A36), "
+                                    + "send-status-command because the endpoint accepts anything (A16), "
+                                    + "and the two completions because they take no body at all")
+                    .containsExactly(
+                            "auth-logout",
+                            "document-lookup",
+                            "send-status-command",
+                            "work-order-line-completion");
         }
 
         @Test
@@ -368,12 +380,15 @@ class CapturedPayloadsTest {
                 {"icerik": "QkFTRTY0", "mimeType": "image/jpeg", "dosyaAdi": "masked.jpg"}""";
 
         @Test
-        void shouldMapTheAccessoryDocumentRequestIncludingItsLowerCaseIdKey() {
+        void shouldMapTheAccessoryRequestIncludingItsLowerCaseIdKey() {
+            // The captured body belongs to /aksesuarlar/ per the revised vocabulary, not to
+            // /dokuman/ where the collection had been sending it. Its legacy field names are
+            // still the ones that capture proves, `detayid` included.
             assertFullyCovers(
                     ACCESSORY_DOCUMENT_REQUEST,
-                    resource("accessory-document").request(),
+                    resource("accessory-update").request(),
                     Direction.TO_ENGLISH);
-            assertRoundTrips(ACCESSORY_DOCUMENT_REQUEST, resource("accessory-document").request());
+            assertRoundTrips(ACCESSORY_DOCUMENT_REQUEST, resource("accessory-update").request());
         }
 
         @Test
@@ -381,7 +396,7 @@ class CapturedPayloadsTest {
             JsonNode exposed =
                     assertFullyCovers(
                             ACCESSORY_DOCUMENT_RESPONSE,
-                            resource("accessory-document").response(),
+                            resource("document-lookup").response(),
                             Direction.TO_ENGLISH);
 
             // `link` is both the legacy name and the agreed English one, so unlike every
@@ -433,30 +448,20 @@ class CapturedPayloadsTest {
         }
 
         @Test
-        void shouldRelayAndReportTheFiveFieldsNobodyHasNamedYet() {
-            Gaps gaps = new Gaps();
-
+        void shouldNowCoverEveryFieldIncludingTheFiveThatHadNoName() {
+            // The five that used to relay untranslated — cihaz, kablotesisat, gsm,
+            // varisegpsanten and bakimdakivarisegpsanten — are named by the revised
+            // vocabulary, so this payload is fully covered and A34 is closed.
             JsonNode exposed =
-                    translator.translate(
-                            json(SERVICE_DETAIL_RESPONSE),
+                    assertFullyCovers(
+                            SERVICE_DETAIL_RESPONSE,
                             resource("service-detail").response(),
-                            Direction.TO_ENGLISH,
-                            gaps);
+                            Direction.TO_ENGLISH);
 
-            // Relayed rather than dropped: an unnamed field is still the caller's data.
-            assertThat(exposed.get("cihaz").asBoolean()).isTrue();
-            assertThat(exposed.get("varisegpsanten").asBoolean()).isTrue();
-
-            // And reported, so the gap is visible rather than quietly carried forever.
-            assertThat(gaps.gaps)
-                    .as("exactly the five fields with no agreed English name")
-                    .hasSize(5)
-                    .allMatch(
-                            gap ->
-                                    gap.contains("cihaz")
-                                            || gap.contains("kablotesisat")
-                                            || gap.contains("gsm")
-                                            || gap.contains("varisegpsanten"));
+            assertThat(exposed.get("device").asBoolean()).isTrue();
+            assertThat(exposed.get("variseGpsAntenna").asBoolean()).isTrue();
+            assertThat(exposed.get("variseGpsAntennaUnderMaintenance").asBoolean()).isFalse();
+            assertThat(exposed.has("cihaz")).as("no legacy name may survive").isFalse();
         }
 
         @Test

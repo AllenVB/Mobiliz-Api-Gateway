@@ -98,14 +98,25 @@ class AuthMappingTest {
             """;
 
     @Test
-    void shouldDeclareBothAuthResources() {
-        assertThat(catalog.size()).isEqualTo(2);
+    void shouldDeclareEveryAuthResource() {
+        assertThat(catalog.size()).isEqualTo(3);
         assertThat(login().method()).isEqualTo(HttpMethod.POST);
         assertThat(login().legacyPath()).isEqualTo("/yetkiliservis/giris");
         assertThat(catalog.byName("auth-password-reset-request"))
                 .get()
                 .extracting(ResourceMapping::exposedPath)
                 .isEqualTo("/authorized-service/forgot-password");
+
+        // Logout arrived with the revised vocabulary. It carries no body and no payload;
+        // what it does is invalidate the token, which is why it still requires one.
+        assertThat(catalog.byName("auth-logout"))
+                .get()
+                .satisfies(
+                        r -> {
+                            assertThat(r.method()).isEqualTo(HttpMethod.PUT);
+                            assertThat(r.legacyPath()).isEqualTo("/yetkiliservis/cikis");
+                            assertThat(r.requiresToken()).isTrue();
+                        });
     }
 
     @Nested

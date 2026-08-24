@@ -8,6 +8,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -693,6 +694,34 @@ class BridgeEndToEndTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
             assertThat(response.getBody().get("code").asText()).isEqualTo("COMMAND_NOT_SUPPORTED");
+        }
+
+        @Test
+        void shouldSendAnEmptyObjectForAWriteThatCarriesNoBody() {
+            // Completing a work order and logging out take no body, but IIS answers 411 to
+            // a bodyless request before the application sees it. The bridge sends `{}` so
+            // the caller never has to know: calling an operation that has nothing to say
+            // by sending nothing is the natural thing to do.
+            LEGACY.stubFor(
+                    put(urlPathEqualTo("/yetkiliservis/cihaztamamlandi/abc"))
+                            .willReturn(
+                                    aResponse()
+                                            .withStatus(201)
+                                            .withHeader("Content-Type", "application/json")
+                                            .withBody(envelope("null"))));
+
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/authorized-service/device-completed/abc",
+                            null,
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result(response).isNull()).isTrue();
+            LEGACY.verify(
+                    putRequestedFor(urlPathEqualTo("/yetkiliservis/cihaztamamlandi/abc"))
+                            .withRequestBody(equalToJson("{}")));
         }
 
         @Test

@@ -71,6 +71,10 @@ public class BridgeController {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
+    /** Methods for which an empty request still means "a body was intended". */
+    private static final Set<HttpMethod> METHODS_WITH_A_BODY =
+            Set.of(HttpMethod.PUT, HttpMethod.POST, HttpMethod.PATCH);
+
     private final RouteResolver routeResolver;
     private final JsonTranslator translator;
     private final LegacyApiClient legacyApiClient;
@@ -133,7 +137,7 @@ public class BridgeController {
         requireJsonWhenBodyPresent(request, rawBody);
 
         HttpHeaders headers = buildLegacyHeaders(request, resource, token);
-        String legacyBody = buildLegacyBody(rawBody, resource, headers);
+        String legacyBody = buildLegacyBody(rawBody, method, resource, headers);
 
         LegacyResponse legacyResponse =
                 legacyApiClient.exchange(
@@ -312,8 +316,18 @@ public class BridgeController {
     }
 
     /** Translates the inbound body into the legacy vocabulary, or relays it unchanged. */
-    private String buildLegacyBody(byte[] rawBody, ResourceMapping resource, HttpHeaders headers) {
+    private String buildLegacyBody(
+            byte[] rawBody, HttpMethod method, ResourceMapping resource, HttpHeaders headers) {
         if (rawBody.length == 0) {
+            // Some legacy writes take no body — completing a work order, logging out — and
+            // IIS answers 411 Length Required to a bodyless request before the application
+            // ever sees it. An empty object satisfies it and means the same thing, so the
+            // caller never has to know: sending nothing is the natural way to call an
+            // operation that has nothing to say.
+            if (METHODS_WITH_A_BODY.contains(method)) {
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                return "{}";
+            }
             return null;
         }
         headers.setContentType(MediaType.APPLICATION_JSON);

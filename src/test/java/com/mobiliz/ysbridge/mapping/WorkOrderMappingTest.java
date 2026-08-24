@@ -165,8 +165,9 @@ class WorkOrderMappingTest {
                             "work-order-line",
                             "work-order-line-update",
                             "vehicle-status",
-                            "work-order-line-feedback",
+                            "work-order-feedback",
                             "work-order-line-completion-status",
+                            "work-order-line-completion",
                             "work-order-line-demontage-completion",
                             "work-order-line-churn-completion",
                             "work-order-line-dvr-status",
@@ -196,10 +197,19 @@ class WorkOrderMappingTest {
         }
 
         @Test
-        void shouldNotDeclareTheCompleteWorkOrderEndpointWhoseUrlIsUnknown() {
+        void shouldDeclareCompleteWorkOrderAgainstTheUrlTheVocabularyGives() {
+            // Left out for as long as its URL was unknown. The revised vocabulary supplies
+            // it: the write side of the completion-status endpoint, not demontajtamamlandi
+            // as the collection had it — which is why every attempt there answered 411.
             assertThat(catalog.byName("work-order-line-completion"))
-                    .as("its legacy URL is unconfirmed; guessing one would hide the gap")
-                    .isEmpty();
+                    .get()
+                    .satisfies(
+                            r -> {
+                                assertThat(r.method()).isEqualTo(HttpMethod.PUT);
+                                assertThat(r.legacyPath())
+                                        .isEqualTo("/yetkiliservis/cihaztamamlandi/{detailId}");
+                                assertThat(r.request()).as("it takes no body of its own").isNull();
+                            });
         }
 
         @Test
