@@ -152,6 +152,100 @@ class WorkOrderMappingTest {
 
     // ------------------------------------------------------------------- structure
 
+    /**
+     * One work order from the first successful capture of the list endpoint, 2026-08-24. Customer,
+     * contact and serial values are masked; the field names are as captured.
+     */
+    private static final String WORK_ORDER_LIST_ENTRY =
+            """
+            {
+              "id": "40457F50-E38F-F111-B843-000000000000",
+              "srvNumarasi": "SRV-000000-XXXXX",
+              "oncelikli": 2,
+              "musteri": "TEST MUSTERI",
+              "konu": "Demo / Montaj",
+              "hizmetLokasyonu": 2,
+              "orgBasTarihSaat": "8/4/2026 12:06:00 PM",
+              "orgBitTarihSaat": "8/11/2026 11:59:00 PM",
+              "kalanAltIsSayisi": 1,
+              "toplamIsSayisi": 1,
+              "talepKisi1Adi": "TEST KISI",
+              "talepKisi1Tel": "00000000000",
+              "talepKisi2Adi": null,
+              "talepKisi2Tel": null,
+              "musteriLokasyonu": "Test Ofis",
+              "serinoliste": ["Q0000000"],
+              "teknikservis": false,
+              "olusturmatarihi": "8/4/2026 12:03:12 PM",
+              "hedeftarih": "8/11/2026 12:03:12 PM",
+              "sahibi": "Saha Destek 1",
+              "durum": null,
+              "yetkiliServisAdi": null,
+              "yetkiliServisTelefonu": null,
+              "yetkiliServisIlgiliKisi": null,
+              "yetkiliServisAdresi": null,
+              "tamamlanmaTarihi": null,
+              "tamamlanmaSuresi": null
+            }
+            """;
+
+    @Nested
+    class WorkOrderList {
+
+        @Test
+        void shouldCoverEveryFieldOfTheFirstSuccessfulCapture() {
+            // This endpoint answered for the first time on 2026-08-24, closing A28. All 27
+            // of its fields are named, so the payload must translate with nothing left over.
+            Gaps gaps =
+                    translateAndCollectGaps(
+                            json(WORK_ORDER_LIST_ENTRY),
+                            responseOf("work-order-list"),
+                            Direction.TO_ENGLISH);
+            JsonNode exposed = gaps.output;
+
+            assertThat(gaps.unmapped).as("every captured field must be mapped").isEmpty();
+            assertThat(exposed.get("srvNumber").asText()).isEqualTo("SRV-000000-XXXXX");
+            assertThat(exposed.get("priority").asInt()).isEqualTo(2);
+            assertThat(exposed.get("remainingSubTaskCount").asInt()).isEqualTo(1);
+            assertThat(exposed.get("requesterName1").asText()).isEqualTo("TEST KISI");
+            assertThat(exposed.get("serialNoList").get(0).asText()).isEqualTo("Q0000000");
+            assertThat(exposed.has("srvNumarasi")).as("no legacy name may survive").isFalse();
+        }
+
+        @Test
+        void shouldRelayTheUnusualDateFormatUntouched() {
+            // The only payload in this API using US-style dates. Converting would mean
+            // guessing a locale, so the string is carried as it arrives.
+            JsonNode exposed =
+                    translator.translate(
+                            json(WORK_ORDER_LIST_ENTRY),
+                            responseOf("work-order-list"),
+                            Direction.TO_ENGLISH,
+                            TranslationObserver.noop());
+
+            assertThat(exposed.get("orgStartDateTime").asText()).isEqualTo("8/4/2026 12:06:00 PM");
+        }
+
+        @Test
+        void shouldSurviveARoundTripBackToTheLegacyShape() {
+            JsonNode original = json(WORK_ORDER_LIST_ENTRY);
+            JsonNode exposed =
+                    translator.translate(
+                            original,
+                            responseOf("work-order-list"),
+                            Direction.TO_ENGLISH,
+                            TranslationObserver.noop());
+            JsonNode back =
+                    translator.translate(
+                            exposed,
+                            responseOf("work-order-list"),
+                            Direction.TO_LEGACY,
+                            TranslationObserver.noop());
+
+            assertThat(back).isEqualTo(original);
+        }
+    }
+
     @Nested
     class Structure {
 

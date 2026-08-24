@@ -934,25 +934,25 @@ class BridgeEndToEndTest {
             // report said "clean" while the endpoint relayed Turkish field names untouched.
             // A collection counts too — it relays just as much, one element at a time.
             stubGet(
-                    "/yetkiliservis/servistalepleri/0",
+                    "/yetkiliservis/aksesuarlar/abc",
                     envelope(
                             """
-                            [{"srvNumarasi": "SRV-1", "oncelik": 2}]"""));
+                            [{"aksesuarAdi": "GPS Anteni", "durumu": false}]"""));
 
-            ResponseEntity<JsonNode> response = callGet("/authorized-service/service-requests/0");
+            ResponseEntity<JsonNode> response = callGet("/authorized-service/accessories/abc");
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result(response).get("items").get(0).get("srvNumarasi").asText())
+            assertThat(result(response).get("items").get(0).get("aksesuarAdi").asText())
                     .as("with no mapping the payload is relayed rather than dropped")
-                    .isEqualTo("SRV-1");
+                    .isEqualTo("GPS Anteni");
 
             JsonNode coverage = callGet("/internal/mapping/coverage").getBody();
             assertThat(coverage.get("clean").asBoolean())
                     .as("an unmapped endpoint must not read as a clean mapping")
                     .isFalse();
-            assertThat(coverage.get("findings").get("work-order-list").toString())
-                    .contains("no-response-mapping srvNumarasi")
-                    .contains("no-response-mapping oncelik");
+            assertThat(coverage.get("findings").get("accessories").toString())
+                    .contains("no-response-mapping aksesuarAdi")
+                    .contains("no-response-mapping durumu");
         }
 
         @Test

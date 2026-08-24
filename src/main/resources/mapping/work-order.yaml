@@ -23,29 +23,60 @@ resources:
   # --------------------------------------------------------------------------
   # Work order list
   # --------------------------------------------------------------------------
-  # NO RESPONSE MAPPING, and it cannot be written yet.
+  # A28 CLOSED. This endpoint answered for the first time on 2026-08-24, against
+  # `/servistalepleri/1` — `0` is the segment that hangs, which is why every earlier
+  # attempt timed out after 125 seconds. Fourteen work orders came back, and their 27
+  # Turkish names line up one-for-one with the 27 the vocabulary had already named.
   #
-  # The vocabulary gives this endpoint's English field names in full — id, srvNumber,
-  # priority, customer, subject, serviceLocation, orgStartDateTime, orgEndDateTime,
-  # remainingSubTaskCount, totalTaskCount, requesterName1, requesterPhone1,
-  # requesterName2, requesterPhone2, customerLocation, serialNoList, technicalService,
-  # createdDate, targetDate, owner, status, authorizedServiceName,
-  # authorizedServicePhone, authorizedServiceContact, authorizedServiceAddress,
-  # completionDate, completionDuration — but a mapping needs BOTH sides, and no
-  # successful response has ever been captured from this endpoint (it answers 524 after
-  # 125 seconds). The legacy names those 27 English names correspond to are unknown.
+  # The pairing is by meaning, not by position: `oncelikli`→priority,
+  # `orgBasTarihSaat`→orgStartDateTime, `kalanAltIsSayisi`→remainingSubTaskCount,
+  # `talepKisi1Tel`→requesterPhone1 and so on all read correctly in both directions.
+  # Position agrees as well, which is corroboration rather than the argument.
   #
-  # Pairing them by guesswork would produce a mapping that looks complete and silently
-  # renames the wrong fields. Tracked as A28.
-  #
-  # The vocabulary pairs this with `/yetkiliservis/servistalepleri/**1**`, while every
-  # capture used `**0**` — and `0` is the one that hangs for 125 seconds. Whoever wrote
-  # the vocabulary evidently got a response out of `1`. The trailing segment is modelled
-  # as a path variable, so both work without a change here; A11 is what it means.
+  # NOTE the date format. This is the only payload in the API using US-style
+  # `8/4/2026 12:06:00 PM` rather than ISO-8601 — a third date convention alongside the
+  # naive `2026-08-24T14:59:26` seen elsewhere. Relayed as the string it is; converting
+  # would mean guessing a locale. Raised as A38.
   work-order-list:
     method: GET
     exposedPath: /authorized-service/service-requests/{listFilter}
     legacyPath: /yetkiliservis/servistalepleri/{listFilter}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        id: id
+        srvNumarasi: srvNumber
+        oncelikli: priority
+        musteri: customer
+        konu: subject
+        hizmetLokasyonu: serviceLocation
+        kalanAltIsSayisi: remainingSubTaskCount
+        toplamIsSayisi: totalTaskCount
+        musteriLokasyonu: customerLocation
+        serinoliste: serialNoList
+        teknikservis: technicalService
+        sahibi: owner
+        durum: status
+
+        # The person who raised the request, and an optional second contact.
+        talepKisi1Adi: requesterName1
+        talepKisi1Tel: requesterPhone1
+        talepKisi2Adi: requesterName2
+        talepKisi2Tel: requesterPhone2
+
+        # Dates, all in the US-style format noted above.
+        orgBasTarihSaat: orgStartDateTime
+        orgBitTarihSaat: orgEndDateTime
+        olusturmatarihi: createdDate
+        hedeftarih: targetDate
+        tamamlanmaTarihi: completionDate
+        tamamlanmaSuresi: completionDuration
+
+        # The authorised service assigned to the work order; all null so far.
+        yetkiliServisAdi: authorizedServiceName
+        yetkiliServisTelefonu: authorizedServicePhone
+        yetkiliServisIlgiliKisi: authorizedServiceContact
+        yetkiliServisAdresi: authorizedServiceAddress
 
   # --------------------------------------------------------------------------
   # Lines of one work order  (result is an array)
