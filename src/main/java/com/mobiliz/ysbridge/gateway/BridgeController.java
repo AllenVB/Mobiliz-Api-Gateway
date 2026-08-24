@@ -29,8 +29,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.InvalidMediaTypeException;
@@ -363,9 +366,10 @@ public class BridgeController {
         if (resource.response() == null) {
             // Reported rather than passed over in silence: an endpoint with no response mapping
             // is the largest gap there is, and it is the one the coverage report used to miss.
-            if (result.isObject()) {
-                coverage.unmappedResponse(resource.name(), result::fieldNames);
-            }
+            // Collections are reported through their elements — a collection endpoint with no
+            // mapping relays just as much untranslated data as a single object does, and was
+            // just as invisible.
+            coverage.unmappedResponse(resource.name(), unmappedNames(result));
             return result;
         }
         return translator.translate(
@@ -373,6 +377,25 @@ public class BridgeController {
                 resource.response(),
                 Direction.TO_ENGLISH,
                 coverage.observerFor(resource.name()));
+    }
+
+    /**
+     * Top-level field names of an untranslated payload, whether it is one object or a collection of
+     * them. A scalar has none — the DVR stream URL is a bare string, and there is nothing there to
+     * name or to translate.
+     */
+    private static Collection<String> unmappedNames(JsonNode result) {
+        Set<String> names = new LinkedHashSet<>();
+        if (result.isObject()) {
+            result.fieldNames().forEachRemaining(names::add);
+        } else if (result.isArray()) {
+            for (JsonNode element : result) {
+                if (element.isObject()) {
+                    element.fieldNames().forEachRemaining(names::add);
+                }
+            }
+        }
+        return names;
     }
 
     /**

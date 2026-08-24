@@ -397,6 +397,74 @@ class CapturedPayloadsTest {
         }
     }
 
+    // ======================================================================= service
+
+    @Nested
+    class ServiceDetailRead {
+
+        /** The first successful capture of servisdetay, taken 2026-08-24. */
+        private static final String SERVICE_DETAIL_RESPONSE =
+                """
+                {
+                  "cihaz": true, "kablotesisat": false, "gsm": false,
+                  "varisegpsanten": true,
+                  "bakimdakicihaz": true, "bakimdakikablotesisat": false,
+                  "bakimdakigsm": true, "bakimdakivarisegpsanten": false,
+                  "bakimdakiaksesuar1": null, "bakimdakiaksesuar2": null,
+                  "bakimdakiaksesuar3": null,
+                  "sorununkaynagi": null, "sorununkaynagidetay": null,
+                  "cozumdetay": null, "resimyukle": false, "kargodurumu": 0
+                }
+                """;
+
+        @Test
+        void shouldTranslateTheElevenFieldsTheVocabularyNames() {
+            JsonNode exposed =
+                    translator.translate(
+                            json(SERVICE_DETAIL_RESPONSE),
+                            resource("service-detail").response(),
+                            Direction.TO_ENGLISH,
+                            TranslationObserver.noop());
+
+            assertThat(exposed.get("deviceUnderMaintenance").asBoolean()).isTrue();
+            assertThat(exposed.get("gsmUnderMaintenance").asBoolean()).isTrue();
+            assertThat(exposed.get("cargoStatus").asInt()).isZero();
+            assertThat(exposed.get("uploadImage").asBoolean()).isFalse();
+        }
+
+        @Test
+        void shouldRelayAndReportTheFiveFieldsNobodyHasNamedYet() {
+            Gaps gaps = new Gaps();
+
+            JsonNode exposed =
+                    translator.translate(
+                            json(SERVICE_DETAIL_RESPONSE),
+                            resource("service-detail").response(),
+                            Direction.TO_ENGLISH,
+                            gaps);
+
+            // Relayed rather than dropped: an unnamed field is still the caller's data.
+            assertThat(exposed.get("cihaz").asBoolean()).isTrue();
+            assertThat(exposed.get("varisegpsanten").asBoolean()).isTrue();
+
+            // And reported, so the gap is visible rather than quietly carried forever.
+            assertThat(gaps.gaps)
+                    .as("exactly the five fields with no agreed English name")
+                    .hasSize(5)
+                    .allMatch(
+                            gap ->
+                                    gap.contains("cihaz")
+                                            || gap.contains("kablotesisat")
+                                            || gap.contains("gsm")
+                                            || gap.contains("varisegpsanten"));
+        }
+
+        @Test
+        void shouldSurviveARoundTripDespiteTheUnnamedFields() {
+            assertRoundTrips(SERVICE_DETAIL_RESPONSE, resource("service-detail").response());
+        }
+    }
+
     // ========================================================================== user
 
     @Nested

@@ -903,26 +903,27 @@ class BridgeEndToEndTest {
             // The largest gap of all, and the one the report used to miss: with no response
             // block the payload never reaches the translator, so nothing was observed and the
             // report said "clean" while the endpoint relayed Turkish field names untouched.
+            // A collection counts too — it relays just as much, one element at a time.
             stubGet(
-                    "/yetkiliservis/servisdetay/abc",
+                    "/yetkiliservis/servistalepleri/0",
                     envelope(
                             """
-                            {"bakimdakicihaz": true, "kargodurumu": 1}"""));
+                            [{"srvNumarasi": "SRV-1", "oncelik": 2}]"""));
 
-            ResponseEntity<JsonNode> response = callGet("/authorized-service/service-detail/abc");
+            ResponseEntity<JsonNode> response = callGet("/authorized-service/service-requests/0");
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result(response).get("bakimdakicihaz").asBoolean())
+            assertThat(result(response).get("items").get(0).get("srvNumarasi").asText())
                     .as("with no mapping the payload is relayed rather than dropped")
-                    .isTrue();
+                    .isEqualTo("SRV-1");
 
             JsonNode coverage = callGet("/internal/mapping/coverage").getBody();
             assertThat(coverage.get("clean").asBoolean())
                     .as("an unmapped endpoint must not read as a clean mapping")
                     .isFalse();
-            assertThat(coverage.get("findings").get("service-detail").toString())
-                    .contains("no-response-mapping bakimdakicihaz")
-                    .contains("no-response-mapping kargodurumu");
+            assertThat(coverage.get("findings").get("work-order-list").toString())
+                    .contains("no-response-mapping srvNumarasi")
+                    .contains("no-response-mapping oncelik");
         }
 
         @Test

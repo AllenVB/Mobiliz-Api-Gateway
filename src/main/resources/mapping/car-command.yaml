@@ -80,14 +80,26 @@ resources:
   # --------------------------------------------------------------------------
   # Status command
   # --------------------------------------------------------------------------
-  # The URL is confirmed, the body is NOT: the capture was sent without one and
-  # answered 411 Length Required.
+  # STILL NO KNOWN BODY, and probing cannot find one. Established 2026-08-24:
   #
-  # Deliberately declared with no `request` block. The route, the token header and
-  # the envelope handling all work; the body is relayed to the legacy API unchanged
-  # until a real sample exists. That means callers must currently send the legacy
-  # field names for this one endpoint — the only place in the bridge where that is
-  # true, and it is tracked in docs/open-items.md.
+  #   * with no body at all it answers 411 — that is IIS, before the application
+  #   * with the `sendcarcommand` body it answers `success: true`
+  #   * with `{}` it ALSO answers `success: true`
+  #
+  # The third result is the one that matters. The endpoint accepts any JSON and
+  # reports success, so a success proves nothing about the fields: the four that
+  # were tried may be exactly right, or may be ignored entirely along with
+  # everything else. No experiment run from outside can tell those apart.
+  #
+  # A request mapping is therefore NOT declared. Writing one from the accepted body
+  # would publish a contract this project invented and the API does not enforce —
+  # precisely the "looks complete, is silently wrong" failure this layer exists to
+  # avoid. The body is relayed untranslated instead: the only endpoint where callers
+  # must still send legacy field names, and visibly so.
+  #
+  # A16 stays open and now needs the team or the backend source, not another probe.
+  # That the endpoint reports success for a body it does not read is itself worth
+  # reporting — see docs/open-items.md, section F.
   send-status-command:
     method: PUT
     exposedPath: /authorized-service/send-status-command/{detailId}

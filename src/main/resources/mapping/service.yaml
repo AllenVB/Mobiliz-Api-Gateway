@@ -21,10 +21,42 @@ resources:
   # token header and came back "Token Bilgisi Eksik". Declaring no response mapping
   # means the payload is relayed untranslated until a real sample exists, which is
   # visible rather than silently wrong.
+  # The first successful capture arrived on 2026-08-24, once the token header was
+  # added to the request. Sixteen fields, in four pairs plus the diagnosis block.
+  #
+  # Eleven of them already have agreed English names, because the *update* request
+  # for this same resource names them — a field is not named twice just because it
+  # appears in both directions. The remaining five have no agreed name yet:
+  #
+  #   cihaz · kablotesisat · gsm · varisegpsanten · bakimdakivarisegpsanten
+  #
+  # They are left unmapped rather than invented, so they relay untranslated and are
+  # listed by /internal/mapping/coverage until the team names them. Note that
+  # `bakimdakivarisegpsanten` completes a pair whose other three members the update
+  # request does carry — so the documented request body is missing it too. Both
+  # points are raised as A34.
   service-detail:
     method: GET
     exposedPath: /authorized-service/service-detail/{detailId}
     legacyPath: /yetkiliservis/servisdetay/{detailId}
+    response:
+      unmapped: PASSTHROUGH_AND_REPORT
+      fields:
+        # Which parts are under maintenance — the same names the update request uses.
+        bakimdakicihaz: deviceUnderMaintenance
+        bakimdakikablotesisat: cableWiringUnderMaintenance
+        bakimdakigsm: gsmUnderMaintenance
+        bakimdakiaksesuar1: maintenanceAccessory1
+        bakimdakiaksesuar2: maintenanceAccessory2
+        bakimdakiaksesuar3: maintenanceAccessory3
+
+        # Diagnosis and resolution.
+        sorununkaynagi: problemSource
+        sorununkaynagidetay: problemSourceDetail
+        cozumdetay: solutionDetail
+
+        resimyukle: uploadImage
+        kargodurumu: cargoStatus
 
   # --------------------------------------------------------------------------
   # Service detail, write
