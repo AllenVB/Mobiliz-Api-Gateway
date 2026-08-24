@@ -188,15 +188,11 @@ class CapturedPayloadsTest {
             assertThat(writesWithoutARequestMapping)
                     .as(
                             "a write that relays its body untranslated defeats the point of the bridge, "
-                                    + "so each one here needs a recorded reason: document-lookup "
-                                    + "because the capture and the vocabulary disagree (A36), "
-                                    + "send-status-command because the endpoint accepts anything (A16), "
-                                    + "and the two completions because they take no body at all")
+                                    + "so each one here needs a recorded reason: send-status-command "
+                                    + "because the endpoint accepts any body and so cannot be probed "
+                                    + "(A16), and the two completions because they take no body at all")
                     .containsExactly(
-                            "auth-logout",
-                            "document-lookup",
-                            "send-status-command",
-                            "work-order-line-completion");
+                            "auth-logout", "send-status-command", "work-order-line-completion");
         }
 
         @Test

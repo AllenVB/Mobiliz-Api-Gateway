@@ -17,27 +17,37 @@ resources:
   # --------------------------------------------------------------------------
   # Installation document lookup
   # --------------------------------------------------------------------------
-  # ⚠ THE CAPTURE AND THE VOCABULARY DISAGREE ABOUT THIS BODY.
+  # THE BODY IS THE CAPTURED ONE, not the vocabulary's.
   #
-  # The collection sends `{aksesuarId, aksesuarAdi, detayid, durumu}` here and gets a
-  # document link back — that is a real, captured, successful exchange. The revised
-  # vocabulary says the body is `{brandId, modelId, documentType}`, an entirely
-  # different set, and gives the accessory fields to `/aksesuarlar/` instead.
+  # Two saved requests — `get document` and `update accessory` — send
+  # `{aksesuarId, aksesuarAdi, detayid, durumu}` to this same URL and both come back
+  # with a document link. That is a real, repeated, successful exchange, and the four
+  # legacy names are exactly the ones the vocabulary already names for the accessory
+  # write. So the mapping is written from evidence, using names that are already agreed.
   #
-  # Both can be true at once if this endpoint ignores fields it does not recognise,
-  # which is exactly what `sendstatuscommand` was shown to do. That would mean the
-  # captured call "worked" while sending the wrong body — returning some default
-  # document rather than the one asked for.
+  # The vocabulary describes a different body here — `{brandId, modelId, documentType}`
+  # — and gives these four to `/aksesuarlar/` instead. That may still be the intended
+  # design; what it is not is something that has ever been shown to work. A36 stays open
+  # against it, and if it turns out to be right this mapping moves rather than changes.
   #
-  # NO REQUEST MAPPING IS DECLARED, because neither shape can be trusted: the
-  # vocabulary's has no legacy names to map from, and the capture's may never have
-  # been read. The body relays untranslated until this is settled. Raised as A36.
+  # `unmapped: FAIL` is deliberate even here: it is what makes a caller sending the
+  # vocabulary's shape get a clear 400 naming the field, rather than a silent success
+  # against an endpoint that may not read its body at all.
   #
   # It is a lookup performed with PUT — the legacy API's choice, not ours.
+  #
+  # NOTE the legacy key `detayid`: lower-case `id`, unlike `detayId` everywhere else.
   document-lookup:
     method: PUT
     exposedPath: /authorized-service/document
     legacyPath: /yetkiliservis/dokuman
+    request:
+      unmapped: FAIL
+      fields:
+        aksesuarId: accessoryId
+        aksesuarAdi: accessoryName
+        detayid: detailId
+        durumu: status
     response:
       unmapped: PASSTHROUGH_AND_REPORT
       fields:
