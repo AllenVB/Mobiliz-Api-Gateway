@@ -64,6 +64,24 @@ public class MappingCoverageRecorder {
         };
     }
 
+    /**
+     * Records a payload that arrived for a resource with no response mapping at all.
+     *
+     * <p>Without this the report is misleading in exactly the case that matters most. An endpoint
+     * with no {@code response} block relays its payload untranslated and never reaches the
+     * translator, so nothing was observed and the report said {@code clean} — while a whole
+     * endpoint was passing Turkish field names through. The gaps the report is meant to reveal were
+     * the ones it could not see.
+     *
+     * <p>The top-level names are recorded because they are what someone completing the mapping
+     * needs. Values are not: they are payload data, and could be personal or a credential.
+     */
+    public void unmappedResponse(String resourceName, Iterable<String> topLevelFieldNames) {
+        for (String name : topLevelFieldNames) {
+            record(resourceName, "no-response-mapping " + name);
+        }
+    }
+
     private void record(String resourceName, String finding) {
         Set<String> findings =
                 findingsByResource.computeIfAbsent(

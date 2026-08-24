@@ -7,6 +7,7 @@ import com.mobiliz.ysbridge.config.BridgeProperties;
 import com.mobiliz.ysbridge.error.ErrorCatalog;
 import com.mobiliz.ysbridge.error.ErrorRule;
 import com.mobiliz.ysbridge.error.LegacyErrorException;
+import com.mobiliz.ysbridge.gateway.exception.InvalidQueryParameterException;
 import com.mobiliz.ysbridge.gateway.exception.MalformedRequestBodyException;
 import com.mobiliz.ysbridge.gateway.exception.MethodNotAllowedException;
 import com.mobiliz.ysbridge.gateway.exception.MissingQueryParameterException;
@@ -284,9 +285,27 @@ public class BridgeController {
                 }
                 continue;
             }
+            requireUsableAsHeaderValue(value, header.fromQuery());
             headers.set(header.legacyName(), value);
         }
         return headers;
+    }
+
+    /**
+     * Rejects a value that cannot travel in a header, before the upstream call is attempted.
+     *
+     * <p>The HTTP client refuses such a value too, so nothing is smuggled upstream either way — but
+     * it refuses by throwing, which would surface as a 500 and log a stack trace. A caller's
+     * mistake should not read as this service failing, and one request should not be enough to
+     * start filling the error log.
+     */
+    private static void requireUsableAsHeaderValue(String value, String parameter) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x20 || c == 0x7F) {
+                throw new InvalidQueryParameterException(parameter);
+            }
+        }
     }
 
     /** Translates the inbound body into the legacy vocabulary, or relays it unchanged. */
@@ -342,6 +361,11 @@ public class BridgeController {
 
     private JsonNode translateResult(JsonNode result, ResourceMapping resource) {
         if (resource.response() == null) {
+            // Reported rather than passed over in silence: an endpoint with no response mapping
+            // is the largest gap there is, and it is the one the coverage report used to miss.
+            if (result.isObject()) {
+                coverage.unmappedResponse(resource.name(), result::fieldNames);
+            }
             return result;
         }
         return translator.translate(

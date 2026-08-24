@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import java.net.URI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -71,6 +73,8 @@ class BridgeEndToEndTest {
     }
 
     @Autowired private TestRestTemplate http;
+
+    @LocalServerPort private int port;
 
     @BeforeEach
     void resetLegacy() {
@@ -335,6 +339,30 @@ class BridgeEndToEndTest {
         }
 
         @Test
+        void shouldRejectAQueryParameterThatCannotTravelInAHeader() {
+            // A CR or LF would end the header and let what follows be read as another one.
+            // The HTTP client refuses the value anyway, so nothing is smuggled upstream — but
+            // it refuses by throwing, and a caller's mistake must not read as a 500.
+            // Built as a URI so the percent-encoding survives to the wire: a String path
+            // would be encoded again, and the control characters would never arrive.
+            ResponseEntity<JsonNode> response =
+                    http.exchange(
+                            URI.create(
+                                    "http://localhost:%d/authorized-service/chassis-inquiry"
+                                                    .formatted(port)
+                                            + "?serialNumber=211%0d%0aX-Evil:+1"),
+                            HttpMethod.GET,
+                            new HttpEntity<>(null, authenticated()),
+                            JsonNode.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().get("code").asText())
+                    .isEqualTo("INVALID_QUERY_PARAMETER");
+            assertThat(response.getBody().get("parameter").asText()).isEqualTo("serialNumber");
+            LEGACY.verify(0, getRequestedFor(urlPathEqualTo("/yetkiliservis/SaseSorgulama")));
+        }
+
+        @Test
         void shouldRejectTheRequestWhenARequiredParameterIsMissing() {
             ResponseEntity<JsonNode> response = callGet("/authorized-service/chassis-inquiry");
 
@@ -406,6 +434,25 @@ class BridgeEndToEndTest {
                     result(callGet("/authorized-service/service-request-lines/WO-1?page=99"));
 
             assertThat(page.get("items")).isEmpty();
+            assertThat(page.get("page").get("totalElements").asInt()).isEqualTo(5);
+        }
+
+        @Test
+        void shouldStayEmptyWhenThePageNumberIsLargeEnoughToOverflow() {
+            // page * size is a multiplication, and a caller chooses both. Large enough values
+            // wrap to a negative offset, which reads before the start of the array; Jackson
+            // answers null for those indices and they arrive as a page full of nulls.
+            stubGet("/yetkiliservis/servistalepsatirlari/WO-1", FIVE_LINES);
+
+            JsonNode page =
+                    result(
+                            callGet(
+                                    "/authorized-service/service-request-lines/WO-1"
+                                            + "?page=300000000&size=10"));
+
+            assertThat(page.get("items"))
+                    .as("a page past the end is empty, never a list of nulls")
+                    .isEmpty();
             assertThat(page.get("page").get("totalElements").asInt()).isEqualTo(5);
         }
 
@@ -850,6 +897,33 @@ class BridgeEndToEndTest {
     @Nested
     @DisplayName("mapping coverage")
     class Coverage {
+
+        @Test
+        void shouldReportAnEndpointThatHasNoResponseMappingAtAll() {
+            // The largest gap of all, and the one the report used to miss: with no response
+            // block the payload never reaches the translator, so nothing was observed and the
+            // report said "clean" while the endpoint relayed Turkish field names untouched.
+            stubGet(
+                    "/yetkiliservis/servisdetay/abc",
+                    envelope(
+                            """
+                            {"bakimdakicihaz": true, "kargodurumu": 1}"""));
+
+            ResponseEntity<JsonNode> response = callGet("/authorized-service/service-detail/abc");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result(response).get("bakimdakicihaz").asBoolean())
+                    .as("with no mapping the payload is relayed rather than dropped")
+                    .isTrue();
+
+            JsonNode coverage = callGet("/internal/mapping/coverage").getBody();
+            assertThat(coverage.get("clean").asBoolean())
+                    .as("an unmapped endpoint must not read as a clean mapping")
+                    .isFalse();
+            assertThat(coverage.get("findings").get("service-detail").toString())
+                    .contains("no-response-mapping bakimdakicihaz")
+                    .contains("no-response-mapping kargodurumu");
+        }
 
         @Test
         void shouldReportAFieldTheLegacyApiStartsSending() {

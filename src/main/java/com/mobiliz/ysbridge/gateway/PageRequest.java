@@ -17,7 +17,14 @@ public record PageRequest(int number, int size) {
         }
     }
 
-    public int offset() {
-        return number * size;
+    /**
+     * Index of the first item on this page.
+     *
+     * <p>Returns a {@code long} deliberately. Both operands are caller-supplied, and {@code number
+     * * size} in {@code int} arithmetic wraps negative for large pages — which then reads before
+     * the start of the collection and produces a page of nulls rather than an empty one.
+     */
+    public long offset() {
+        return (long) number * size;
     }
 }

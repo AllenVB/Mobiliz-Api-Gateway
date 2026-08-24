@@ -78,8 +78,9 @@ public class CollectionPaginator {
      */
     public ArrayNode slice(JsonNode array, PageRequest page) {
         ArrayNode slice = nodes.arrayNode();
-        int from = Math.min(page.offset(), array.size());
-        int to = Math.min(from + page.size(), array.size());
+        // The cast is safe because the minimum is taken against the array's own size first.
+        int from = (int) Math.min(page.offset(), array.size());
+        int to = (int) Math.min((long) from + page.size(), array.size());
         for (int index = from; index < to; index++) {
             slice.add(array.get(index));
         }

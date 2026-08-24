@@ -2,10 +2,10 @@ package com.mobiliz.ysbridge.error;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mobiliz.ysbridge.gateway.ExposedEnvelope;
 import com.mobiliz.ysbridge.gateway.exception.InvalidPageRequestException;
+import com.mobiliz.ysbridge.gateway.exception.InvalidQueryParameterException;
 import com.mobiliz.ysbridge.gateway.exception.MalformedRequestBodyException;
 import com.mobiliz.ysbridge.gateway.exception.MethodNotAllowedException;
 import com.mobiliz.ysbridge.gateway.exception.MissingQueryParameterException;
@@ -49,8 +49,6 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class BridgeExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BridgeExceptionHandler.class);
-
-    private static final JsonNodeFactory NODES = JsonNodeFactory.instance;
 
     /** The legacy {@code type} on every failure seen so far. Carrying it would add nothing. */
     private static final String UNINFORMATIVE_LEGACY_TYPE = "ERROR";
@@ -107,6 +105,13 @@ public class BridgeExceptionHandler {
     @ExceptionHandler(InvalidPageRequestException.class)
     ResponseEntity<JsonNode> handleInvalidPageRequest(InvalidPageRequestException e) {
         ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "INVALID_PAGE_REQUEST");
+        body.put("parameter", e.parameter());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    ResponseEntity<JsonNode> handleInvalidQueryParameter(InvalidQueryParameterException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "INVALID_QUERY_PARAMETER");
         body.put("parameter", e.parameter());
         return ResponseEntity.badRequest().body(body);
     }
