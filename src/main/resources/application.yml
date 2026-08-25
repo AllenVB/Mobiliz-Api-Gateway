@@ -36,3 +36,15 @@ management:
 logging:
   level:
     com.mobiliz.ysbridge: INFO
+
+    # Pinned so that turning the root logger up to DEBUG — which is the first thing anyone
+    # does when diagnosing a problem — does not put credentials in the log. Both of these
+    # write whole message bodies at DEBUG, and the bodies passing through this service
+    # include the login password, the session token, and the DVR stream URL, which carries
+    # a Mobiliz-Token in its query string.
+    #
+    # Nothing this service logs itself carries payload data; these two are Spring's own.
+    # Anyone who genuinely needs body logging can still raise these by name, which is a
+    # deliberate act rather than a side effect of a blanket DEBUG.
+    org.springframework.web.client.DefaultRestClient: INFO
+    org.springframework.web.servlet.mvc.method.annotation: INFO

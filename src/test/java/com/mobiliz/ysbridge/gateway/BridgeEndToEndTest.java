@@ -217,6 +217,59 @@ class BridgeEndToEndTest {
         }
 
         @Test
+        void shouldRejectARequestBodyThatIsNotAnObject() {
+            // `unmapped: FAIL` polices which fields a body may carry, but a body that is
+            // not an object at all carries no fields to police. Relaying it forwards
+            // nonsense upstream and answers the caller 200 — the opposite of the point.
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/authorized-service/feedback/WO-1",
+                            "[1,2,3]",
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().get("code").asText()).isEqualTo("INVALID_REQUEST_SHAPE");
+            LEGACY.verify(0, putRequestedFor(urlPathEqualTo("/yetkiliservis/geribildirim/WO-1")));
+        }
+
+        @Test
+        void shouldRejectABareStringBodyToo() {
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/authorized-service/feedback/WO-1",
+                            "\"just-a-string\"",
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody().get("code").asText()).isEqualTo("INVALID_REQUEST_SHAPE");
+        }
+
+        @Test
+        void shouldStillRelayANonObjectBodyWhereNoShapeIsDeclared() {
+            // send-status-command declares no request mapping, so there is no shape to
+            // violate and nothing to check it against. Its body is relayed whatever it
+            // is — that is A16, not a defect this rule should catch.
+            LEGACY.stubFor(
+                    put(urlPathEqualTo("/yetkiliservis/sendstatuscommand/abc"))
+                            .willReturn(
+                                    aResponse()
+                                            .withStatus(201)
+                                            .withHeader("Content-Type", "application/json")
+                                            .withBody(envelope("null"))));
+
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.PUT,
+                            "/authorized-service/send-status-command/abc",
+                            "[1,2,3]",
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
         void shouldRejectAFieldThatIsNotPartOfTheExposedContract() {
             ResponseEntity<JsonNode> response =
                     send(

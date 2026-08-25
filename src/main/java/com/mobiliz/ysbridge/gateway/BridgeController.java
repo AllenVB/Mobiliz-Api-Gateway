@@ -8,6 +8,7 @@ import com.mobiliz.ysbridge.error.ErrorCatalog;
 import com.mobiliz.ysbridge.error.ErrorRule;
 import com.mobiliz.ysbridge.error.LegacyErrorException;
 import com.mobiliz.ysbridge.gateway.exception.InvalidQueryParameterException;
+import com.mobiliz.ysbridge.gateway.exception.InvalidRequestShapeException;
 import com.mobiliz.ysbridge.gateway.exception.MalformedRequestBodyException;
 import com.mobiliz.ysbridge.gateway.exception.MethodNotAllowedException;
 import com.mobiliz.ysbridge.gateway.exception.MissingQueryParameterException;
@@ -341,6 +342,12 @@ public class BridgeController {
         if (resource.request() == null) {
             // No captured shape for this endpoint; the body is relayed untranslated.
             return exposedBody.toString();
+        }
+        // A declared mapping means fields, which means an object. An array or a scalar
+        // carries no fields, so `unmapped: FAIL` has nothing to check and would let it
+        // through to the legacy API — a caller's mistake reading as a success.
+        if (!exposedBody.isObject()) {
+            throw new InvalidRequestShapeException(exposedBody.getNodeType().toString());
         }
         JsonNode legacyBody =
                 translator.translate(

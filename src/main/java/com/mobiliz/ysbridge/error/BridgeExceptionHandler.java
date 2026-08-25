@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mobiliz.ysbridge.gateway.ExposedEnvelope;
 import com.mobiliz.ysbridge.gateway.exception.InvalidPageRequestException;
 import com.mobiliz.ysbridge.gateway.exception.InvalidQueryParameterException;
+import com.mobiliz.ysbridge.gateway.exception.InvalidRequestShapeException;
 import com.mobiliz.ysbridge.gateway.exception.MalformedRequestBodyException;
 import com.mobiliz.ysbridge.gateway.exception.MethodNotAllowedException;
 import com.mobiliz.ysbridge.gateway.exception.MissingQueryParameterException;
@@ -113,6 +114,13 @@ public class BridgeExceptionHandler {
     ResponseEntity<JsonNode> handleInvalidQueryParameter(InvalidQueryParameterException e) {
         ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "INVALID_QUERY_PARAMETER");
         body.put("parameter", e.parameter());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(InvalidRequestShapeException.class)
+    ResponseEntity<JsonNode> handleInvalidRequestShape(InvalidRequestShapeException e) {
+        ObjectNode body = ExposedEnvelope.failure(e.getMessage(), "INVALID_REQUEST_SHAPE");
+        body.put("actualType", e.actualType());
         return ResponseEntity.badRequest().body(body);
     }
 
