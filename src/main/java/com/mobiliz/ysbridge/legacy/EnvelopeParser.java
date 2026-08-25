@@ -1,6 +1,7 @@
 package com.mobiliz.ysbridge.legacy;
 
 import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.exc.StreamConstraintsException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobiliz.ysbridge.legacy.LegacyProtocolException.Kind;
@@ -59,6 +60,15 @@ public final class EnvelopeParser {
         JsonNode root;
         try {
             root = objectMapper.readTree(body);
+        } catch (StreamConstraintsException e) {
+            // Well-formed, but past a bound the parser enforces. Reporting this as malformed
+            // would send someone hunting for a syntax error that is not there. The
+            // reference-data endpoint already answers with about a megabyte and will only
+            // grow, so this is a failure mode worth naming for what it is.
+            throw new LegacyProtocolException(
+                    Kind.RESPONSE_TOO_LARGE,
+                    "the legacy API returned a body larger than this gateway will parse",
+                    e);
         } catch (JacksonException e) {
             throw new LegacyProtocolException(
                     Kind.MALFORMED_JSON,

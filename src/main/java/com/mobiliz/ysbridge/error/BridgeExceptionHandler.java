@@ -203,11 +203,16 @@ public class BridgeExceptionHandler {
     @ExceptionHandler(LegacyUnreachableException.class)
     ResponseEntity<JsonNode> handleUnreachable(LegacyUnreachableException e) {
         boolean timedOut = isTimeout(e);
-        log.error("legacy API unreachable: {}", e.getMessage());
+        log.error("legacy API {}: {}", timedOut ? "timed out" : "unreachable", e.getMessage());
 
+        // The client builds one message for every connection failure — "could not be
+        // reached" — but a timeout is not that. The API answered the connection and then
+        // went quiet, which is a different problem and a different person's to fix.
         return failure(
                 timedOut ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.BAD_GATEWAY,
-                e.getMessage(),
+                timedOut
+                        ? "the legacy API did not answer within the configured timeout"
+                        : e.getMessage(),
                 timedOut ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNREACHABLE");
     }
 

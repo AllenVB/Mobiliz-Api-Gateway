@@ -78,5 +78,12 @@ class BridgeTimeoutTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
         assertThat(response.getBody().get("code").asText()).isEqualTo("UPSTREAM_TIMEOUT");
+
+        // The API *was* reached — it just did not answer in time. Saying it could not be
+        // reached sends whoever is on call to look at connectivity, which is fine, when the
+        // problem is on the other side and slow rather than absent.
+        assertThat(response.getBody().get("message").asText())
+                .doesNotContain("could not be reached")
+                .contains("did not answer");
     }
 }

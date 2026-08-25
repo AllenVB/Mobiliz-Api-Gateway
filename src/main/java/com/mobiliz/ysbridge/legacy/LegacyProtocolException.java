@@ -27,6 +27,13 @@ public class LegacyProtocolException extends RuntimeException {
         EMPTY_BODY("UPSTREAM_EMPTY_BODY"),
         /** A body that would not parse as JSON. */
         MALFORMED_JSON("UPSTREAM_MALFORMED_JSON"),
+        /**
+         * Well-formed JSON that exceeded the parser's bounds — a single string longer than Jackson
+         * allows, most likely. Distinct from {@link #MALFORMED_JSON} because the two send whoever
+         * is on call to different places: one is a bug in the legacy application's output, the
+         * other is a volume the parser was never configured for.
+         */
+        RESPONSE_TOO_LARGE("UPSTREAM_RESPONSE_TOO_LARGE"),
         /** Valid JSON, but not the legacy envelope — ASP.NET's own error body, for instance. */
         NOT_AN_ENVELOPE("UPSTREAM_NOT_AN_ENVELOPE");
 

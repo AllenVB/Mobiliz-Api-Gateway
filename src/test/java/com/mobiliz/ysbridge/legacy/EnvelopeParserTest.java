@@ -152,6 +152,22 @@ class EnvelopeParserTest {
         }
 
         @Test
+        void shouldTellAnOversizedBodyApartFromAMalformedOne() {
+            // A response can be perfectly well-formed JSON and still be refused, because
+            // Jackson bounds how long a single string may be. Reporting that as "not valid
+            // JSON" sends whoever is diagnosing it hunting for a syntax error that does not
+            // exist. The reference-data endpoint already answers with about a megabyte and
+            // will only grow, so this is a failure mode worth naming correctly.
+            String oversized =
+                    "{\"success\": true, \"result\": {\"x\": \"" + "y".repeat(25_000_000) + "\"}}";
+
+            assertThatThrownBy(() -> parser.parse(oversized, MediaType.APPLICATION_JSON))
+                    .isInstanceOf(LegacyProtocolException.class)
+                    .extracting(e -> ((LegacyProtocolException) e).kind().code())
+                    .isEqualTo("UPSTREAM_RESPONSE_TOO_LARGE");
+        }
+
+        @Test
         void shouldRejectJsonThatIsNotAnObject() {
             assertThatThrownBy(() -> parser.parse("[1, 2, 3]", MediaType.APPLICATION_JSON))
                     .isInstanceOf(LegacyProtocolException.class)
