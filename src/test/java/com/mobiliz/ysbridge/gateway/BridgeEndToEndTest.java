@@ -48,7 +48,8 @@ import org.springframework.test.context.DynamicPropertySource;
             "ys-bridge.pagination.max-size=10",
             // Small enough that the rejected remainder still fits in the container's swallow
             // budget, so the caller receives the 413 instead of a dropped connection.
-            "ys-bridge.limits.max-request-body=4KB"
+            "ys-bridge.limits.max-request-body=4KB",
+            "ys-bridge.limits.max-response-body=8KB"
         })
 class BridgeEndToEndTest {
 
@@ -214,6 +215,76 @@ class BridgeEndToEndTest {
             assertThat(response.getStatusCode())
                     .as("login is how a caller obtains a token, so it cannot demand one")
                     .isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldAnswerHeadOnAPathThatAnswersGet() {
+            // HTTP requires it, and a health checker or a cache is entitled to ask.
+            stubGet(
+                    "/yetkiliservis/cihaztamamlandi/abc",
+                    envelope(
+                            """
+                    {"durumu": true}"""));
+
+            ResponseEntity<JsonNode> response =
+                    send(
+                            HttpMethod.HEAD,
+                            "/authorized-service/device-completed/abc",
+                            null,
+                            authenticated());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            LEGACY.verify(getRequestedFor(urlPathEqualTo("/yetkiliservis/cihaztamamlandi/abc")));
+        }
+
+        @Test
+        void shouldTolerateOneTrailingSlash() {
+            // The vocabulary writes several of its paths with a trailing slash, so a client
+            // copying them literally would otherwise get a 404 for a request that is right.
+            stubGet(
+                    "/yetkiliservis/cihaztamamlandi/abc",
+                    envelope(
+                            """
+                    {"durumu": true}"""));
+
+            ResponseEntity<JsonNode> response =
+                    callGet("/authorized-service/device-completed/abc/");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result(response).get("status").asBoolean()).isTrue();
+        }
+
+        @Test
+        void shouldStillRejectAPathThatIsNotJustATrailingSlashApart() {
+            // Tolerating a slash must not become tolerating a missing path variable.
+            ResponseEntity<JsonNode> response = callGet("/authorized-service/device-completed/");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void shouldRequireATokenForTheCoverageReport() {
+            ResponseEntity<JsonNode> response =
+                    send(HttpMethod.GET, "/internal/mapping/coverage", null, null);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody().get("code").asText()).isEqualTo("MISSING_TOKEN");
+        }
+
+        @Test
+        void shouldRefuseAnUpstreamResponseBeyondTheConfiguredBound() {
+            // Refused rather than truncated: a body cut mid-JSON parses as malformed, and
+            // that error would send someone hunting for a bug that is not there.
+            stubGet(
+                    "/yetkiliservis/servistalepsatiri/abc",
+                    envelope("{\"plaka\": \"" + "x".repeat(9000) + "\"}"));
+
+            ResponseEntity<JsonNode> response =
+                    callGet("/authorized-service/service-request-line/abc");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+            assertThat(response.getBody().get("code").asText())
+                    .isEqualTo("UPSTREAM_RESPONSE_TOO_LARGE");
         }
 
         @Test

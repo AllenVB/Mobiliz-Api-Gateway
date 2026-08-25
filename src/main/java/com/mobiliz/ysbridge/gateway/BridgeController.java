@@ -114,7 +114,7 @@ public class BridgeController {
     @RequestMapping("/authorized-service/**")
     public ResponseEntity<JsonNode> handle(HttpServletRequest request)
             throws HttpMediaTypeNotAcceptableException {
-        HttpMethod method = HttpMethod.valueOf(request.getMethod());
+        HttpMethod method = routingMethod(HttpMethod.valueOf(request.getMethod()));
         String path = pathOf(request);
 
         RouteResolver.RouteMatch match =
@@ -169,9 +169,30 @@ public class BridgeController {
     private static String pathOf(HttpServletRequest request) {
         String uri = request.getRequestURI();
         String contextPath = request.getContextPath();
-        return contextPath == null || contextPath.isEmpty()
-                ? uri
-                : uri.substring(contextPath.length());
+        String path =
+                contextPath == null || contextPath.isEmpty()
+                        ? uri
+                        : uri.substring(contextPath.length());
+
+        // One trailing slash is tolerated. Spring 6 stopped doing this by default, on the
+        // reasoning that a path is a path; but the vocabulary this contract comes from writes
+        // several of its paths with a trailing slash, so a client copying them literally would
+        // get a 404 for a request that is otherwise exactly right. Refusing that helps nobody.
+        return path.length() > 1 && path.endsWith("/")
+                ? path.substring(0, path.length() - 1)
+                : path;
+    }
+
+    /**
+     * The method to route by.
+     *
+     * <p>HTTP requires that a resource answering {@code GET} also answer {@code HEAD}, so a {@code
+     * HEAD} is routed as the {@code GET} it shadows and sent upstream as one. The container drops
+     * the body on the way out, which is what makes the answer a {@code HEAD}. The cost is an
+     * upstream call whose payload is discarded — which is what {@code HEAD} is.
+     */
+    private static HttpMethod routingMethod(HttpMethod method) {
+        return HttpMethod.HEAD.equals(method) ? HttpMethod.GET : method;
     }
 
     private RuntimeException noRoute(HttpMethod method, String path) {

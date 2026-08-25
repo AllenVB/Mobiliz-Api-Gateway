@@ -93,6 +93,6 @@ public class GatewayConfiguration {
                 properties.legacy().baseUrl(),
                 properties.legacy().connectTimeout(),
                 properties.legacy().readTimeout());
-        return new LegacyApiClient(restClient);
+        return new LegacyApiClient(restClient, properties.limits().maxResponseBody().toBytes());
     }
 }

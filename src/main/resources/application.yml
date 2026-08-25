@@ -23,6 +23,10 @@ ys-bridge:
   limits:
     # Attachments travel as base64 inside JSON, which inflates them by roughly a third.
     max-request-body: 10MB
+    # The legacy side is bounded too. Its largest known response is the reference data at
+    # roughly a megabyte, so this leaves ample room; what it prevents is one runaway query
+    # upstream buffering without limit and taking this service down with it.
+    max-response-body: 32MB
 
 management:
   endpoints:

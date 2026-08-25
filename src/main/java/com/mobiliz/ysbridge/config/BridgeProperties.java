@@ -76,6 +76,13 @@ public record BridgeProperties(
     /**
      * @param maxRequestBody largest request body the gateway accepts; file uploads travel as base64
      *     inside JSON, which inflates them by roughly a third, so this needs headroom
+     * @param maxResponseBody largest legacy response the gateway will read. The legacy API is
+     *     trusted but not unbounded: its reference-data endpoint already answers with about a
+     *     megabyte and grows with the customer base, and an unbounded read means one misbehaving
+     *     query upstream can exhaust this service's heap. Generous enough that nothing seen so far
+     *     comes close, small enough that a runaway response is refused rather than buffered.
      */
-    public record Limits(@DefaultValue("10MB") DataSize maxRequestBody) {}
+    public record Limits(
+            @DefaultValue("10MB") DataSize maxRequestBody,
+            @DefaultValue("32MB") DataSize maxResponseBody) {}
 }
